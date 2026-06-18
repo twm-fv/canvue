@@ -1,0 +1,2970 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Canvue",
+  "schemaVersion": 1,
+  "description": "Interactive sourcing console that turns the Pin connector into a usable tool: pick a role, see ranked candidates, accept/reject with one click, refine search criteria in natural language, recalibrate from accept/reject patterns, and write recruiter notes that persist into Pin's job memory. Reads live from Pin every time it's opened.",
+  "mcpTools": [
+    "__PIN_PREFIX____list_jobs",
+    "__PIN_PREFIX____create_job",
+    "__PIN_PREFIX____scrape_job_description",
+    "__PIN_PREFIX____get_candidates",
+    "__PIN_PREFIX____accept_candidate",
+    "__PIN_PREFIX____reject_candidate",
+    "__PIN_PREFIX____modify_search",
+    "__PIN_PREFIX____recalibrate_search",
+    "__PIN_PREFIX____read_job_memory",
+    "__PIN_PREFIX____update_job_memory",
+    "__SLACK_PREFIX____slack_send_message_draft",
+    "__SLACK_PREFIX____slack_send_message"
+  ],
+  "mcpServerNames": [
+    "Pin",
+    "Pin",
+    "Pin",
+    "Pin",
+    "Pin",
+    "Pin",
+    "Pin",
+    "Pin",
+    "Pin",
+    "Pin",
+    "Slack",
+    "Slack"
+  ]
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Canvue</title>
+<style>
+:root {
+  color-scheme: light;
+  /* Fanvue brand 2024 — primary greens */
+  --g-forest: #0D1C13;          /* Official Dark Green (3.0) */
+  --g-emerald: #0E6E3A;          /* derived mid-tone for borders/hover */
+  --g-mid: #16A34A;
+  --g-bright: #49F264;           /* Official Green (3.0) */
+  --g-bright-deep: #2BD748;
+  --g-tint: #E5F5EC;
+  --g-tint-deep: #C4ECCF;
+  --g-glow: rgba(14, 110, 58, 0.16);
+
+  /* Secondary brand (used sparingly per spec) */
+  --b-pink: #F25AD8;             /* Official Pink (3.1) */
+  --b-pink-dark: #270209;
+  --b-purple: #9772FF;           /* Official Purple (3.1) */
+  --b-purple-dark: #0C0227;
+
+  /* Greyscale per brand spec 3.3 */
+  --n0: #FFFFFF;
+  --n50: #FAFAFA;
+  --n100: #F3F3F4;               /* Black-200 */
+  --n150: #EBEBEB;
+  --n200: #E0E0E0;
+  --n300: #CBCCCD;               /* Black-300 */
+  --n400: #A4A6A8;               /* Black-400 */
+  --n500: #7D7F82;               /* Black-500 */
+  --n600: #575958;               /* Black-600 */
+  --n700: #525252;
+  --n800: #323334;               /* Black-700 */
+  --n900: #171717;
+  --n950: #0D0D0D;               /* Official Black (3.0) */
+
+  /* Borders */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.10);
+  --border-strong: rgba(0, 0, 0, 0.18);
+  --border-green: rgba(14, 110, 58, 0.28);
+
+  /* Semantic */
+  --error-tint: #FEE2E2;
+  --error-default: #DC2626;
+  --error-strong: #B91C1C;
+  --info-tint: #DBEAFE;
+  --gold: #F59E0B;
+  --gold-tint: #FEF3C7;
+  --orange-rim: #E85A1A;
+
+  /* Radius */
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-full: 999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.05), 0 0.5px 1px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.09), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.14), 0 4px 8px rgba(0,0,0,0.08);
+  --shadow-green: 0 6px 20px rgba(14, 110, 58, 0.25);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: "Inter", "Akzidenz-Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--n900);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 110, 58, 0.04), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(73, 242, 100, 0.05), transparent 35%),
+    var(--n50);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ============ HEADER ============ */
+header.topbar {
+  background: linear-gradient(135deg, var(--n950) 0%, var(--n950) 55%, var(--g-forest) 100%);
+  color: white;
+  padding: 18px 32px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 2px solid var(--g-bright);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+header.topbar .header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+header.topbar .brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+header.topbar .logo-glyph {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(73, 242, 100, 0.45);
+}
+header.topbar .logo-glyph svg {
+  width: 100%;
+  height: 100%;
+}
+header.topbar .brand-text { display: flex; flex-direction: column; gap: 1px; }
+header.topbar .brand-text .title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: white; }
+header.topbar .brand-text .sub { font-size: 11px; font-weight: 500; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.03em; }
+header.topbar .picker-area { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+header.topbar .picker-area .picker-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 600;
+}
+header.topbar select#jobPicker {
+  font-size: 13px;
+  padding: 10px 36px 10px 14px;
+  border: 1px solid rgba(73, 242, 100, 0.25);
+  border-radius: var(--r-full);
+  background: rgba(14, 110, 58, 0.30);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 280px;
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="%2349F264" fill="none" stroke-width="1.8" stroke-linecap="round"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: all 0.15s ease;
+}
+header.topbar select#jobPicker:hover {
+  background-color: rgba(14, 110, 58, 0.50);
+  border-color: var(--g-bright);
+}
+header.topbar select#jobPicker:focus {
+  outline: none;
+  border-color: var(--g-bright);
+  box-shadow: 0 0 0 3px rgba(73, 242, 100, 0.28);
+}
+header.topbar select#jobPicker option { background: var(--n950); color: white; }
+
+.new-role-btn {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 14px;
+  border-radius: var(--r-full);
+  background: var(--g-bright);
+  color: var(--n950);
+  border: 1px solid var(--g-bright-deep);
+  cursor: pointer;
+  letter-spacing: -0.005em;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(73, 242, 100, 0.30);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.new-role-btn:hover {
+  background: var(--g-bright-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(73, 242, 100, 0.40);
+}
+
+.picks-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.picks-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(73, 242, 100, 0.45);
+}
+.picks-btn .picks-count {
+  background: var(--g-bright);
+  color: var(--n950);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ============ MODAL ============ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: white;
+  border-radius: var(--r-lg);
+  width: 660px;
+  max-width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  border-top: 4px solid var(--g-bright);
+  overflow: hidden;
+  animation: modalIn 0.22s ease;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.modal-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-head h2 .badge {
+  background: var(--g-tint);
+  color: var(--g-emerald);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+}
+.modal-head .ghost {
+  padding: 6px 10px;
+  font-size: 18px;
+  line-height: 1;
+}
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.modal-body section { display: flex; flex-direction: column; gap: 6px; }
+.modal-body section label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--n700);
+}
+.modal-body section.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-body section.two-col > div { display: flex; flex-direction: column; gap: 6px; }
+.modal-body .row { display: flex; gap: 8px; align-items: stretch; }
+.modal-body .row .text-input { flex: 1; }
+.modal-body textarea { min-height: 140px; }
+.modal-body .scrape-helper {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--n600);
+}
+.modal-divider {
+  position: relative;
+  text-align: center;
+  margin: 2px 0;
+}
+.modal-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-subtle);
+}
+.modal-divider span {
+  position: relative;
+  background: white;
+  padding: 0 14px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--n500);
+}
+.modal-foot {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--n50);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.modal-foot .required-note {
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--n500);
+  align-self: center;
+}
+
+/* Picks Modal */
+.picks-modal { width: 760px; }
+.picks-empty {
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--n500);
+  font-style: italic;
+  font-size: 13px;
+}
+.picks-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+.picks-group:last-child { margin-bottom: 0; }
+.picks-group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.picks-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--n950);
+}
+.picks-group-count {
+  background: var(--g-tint);
+  color: var(--g-emerald);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+}
+.pick-row {
+  background: var(--n50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+.pick-row:hover { background: white; border-color: var(--g-emerald); }
+.pick-row.is-dream { background: linear-gradient(135deg, white 0%, var(--g-tint) 100%); border-color: var(--g-bright); }
+.pick-row .pr-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--g-tint);
+  color: var(--g-emerald);
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pick-row .pr-info { flex: 1; min-width: 0; }
+.pick-row .pr-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--n950);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pick-row .pr-name .dream-icon { font-size: 12px; }
+.pick-row .pr-meta {
+  font-size: 11px;
+  color: var(--n600);
+  margin-top: 2px;
+}
+.pick-row .pr-actions { display: flex; gap: 6px; }
+.pick-row .pr-actions a {
+  text-decoration: none;
+  background: #0A66C2;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--r-full);
+}
+.pick-row .pr-actions a:hover { background: #084d92; }
+.pick-row .pr-actions button {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+/* ============ BASKETBALL HOOP ============ */
+.hoop-container {
+  position: fixed;
+  top: 128px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0.97;
+}
+.hoop-container.score-flash {
+  animation: scoreFlash 0.8s ease;
+}
+@keyframes scoreFlash {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  20% { transform: translateX(-50%) scale(1.12) rotate(-2deg); }
+  40% { transform: translateX(-50%) scale(1.06) rotate(2deg); }
+  60% { transform: translateX(-50%) scale(1.10) rotate(-1deg); }
+}
+.hoop-container .hoop-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--n950);
+  background: var(--g-bright);
+  padding: 6px 16px;
+  border-radius: var(--r-full);
+  border: 2px solid var(--g-bright-deep);
+  box-shadow: 0 4px 14px rgba(73, 242, 100, 0.42);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hoop-svg {
+  width: 240px;
+  height: 220px;
+  display: block;
+  filter: drop-shadow(0 12px 24px rgba(0,0,0,0.22)) drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+.hoop-net {
+  transform-origin: top center;
+}
+.hoop-container.score-active .hoop-net {
+  animation: netShake 0.6s ease-out;
+}
+@keyframes netShake {
+  0% { transform: scaleY(1); }
+  25% { transform: scaleY(1.3) scaleX(0.94); }
+  50% { transform: scaleY(0.85); }
+  75% { transform: scaleY(1.15) scaleX(0.97); }
+  100% { transform: scaleY(1); }
+}
+
+/* Score burst overlay */
+.score-burst {
+  position: fixed;
+  pointer-events: none;
+  font-weight: 900;
+  font-size: 40px;
+  color: var(--g-bright);
+  text-shadow: 0 4px 14px rgba(73, 242, 100, 0.6), 0 2px 4px rgba(0,0,0,0.3);
+  letter-spacing: -0.03em;
+  z-index: 100;
+  animation: burst 1.2s ease forwards;
+}
+@keyframes burst {
+  0% { opacity: 0; transform: scale(0.6); }
+  20% { opacity: 1; transform: scale(1.2); }
+  60% { opacity: 1; transform: scale(1) translateY(-20px); }
+  100% { opacity: 0; transform: scale(1) translateY(-60px); }
+}
+
+/* Confetti */
+.confetti {
+  position: fixed;
+  width: 8px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 99;
+  animation: confettiFall 1.5s ease-out forwards;
+}
+@keyframes confettiFall {
+  0% { opacity: 1; transform: translateY(0) rotate(0); }
+  100% { opacity: 0; transform: translateY(180px) rotate(540deg); }
+}
+
+/* Basketball element while dragging */
+.basketball {
+  position: fixed;
+  z-index: 99;
+  pointer-events: none;
+  background: linear-gradient(135deg, #E85A1A 0%, #C84410 100%);
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--r-full);
+  box-shadow: 0 8px 22px rgba(232, 90, 26, 0.5), inset 0 -2px 0 rgba(0,0,0,0.18);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255,255,255,0.6);
+}
+.basketball::before {
+  content: '🏀';
+  font-size: 14px;
+}
+
+.dream-grab {
+  cursor: grab;
+  position: relative;
+}
+.dream-grab:active { cursor: grabbing; }
+.dream-grab::after {
+  content: '🏀';
+  font-size: 11px;
+  margin-left: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.dream-grab:hover::after { opacity: 1; }
+
+/* ============ METRICS ============ */
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  max-width: 1500px;
+  margin: 290px auto 0;
+  padding: 0 32px;
+}
+.metric {
+  background: var(--n0);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.18s ease;
+}
+.metric:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.metric.clickable { cursor: pointer; }
+.metric.clickable:hover { box-shadow: var(--shadow-md), 0 0 0 2px var(--g-bright); }
+.metric .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--n600);
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.metric .value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--n950);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.metric .value .small { font-size: 13px; color: var(--n500); font-weight: 500; margin-left: 4px; }
+.metric.dream { background: linear-gradient(135deg, var(--g-forest) 0%, var(--g-emerald) 100%); color: white; border: none; }
+.metric.dream .label { color: rgba(255, 255, 255, 0.65); }
+.metric.dream .value { color: white; }
+.metric.dream::before {
+  content: '🏀';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 60px;
+  opacity: 0.10;
+}
+.metric.accepted .value { color: var(--g-emerald); }
+
+/* ============ MAIN ============ */
+main {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 22px;
+  padding: 22px 32px 60px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+aside.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 200px;
+  align-self: flex-start;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+aside.sidebar::-webkit-scrollbar { width: 6px; }
+aside.sidebar::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+
+.panel {
+  background: var(--n0);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.panel.dream-panel {
+  background: linear-gradient(180deg, var(--g-forest) 0%, var(--n950) 100%);
+  color: white;
+  border: 1px solid rgba(73, 242, 100, 0.20);
+}
+.panel.dream-panel h3 { color: rgba(255, 255, 255, 0.70); }
+.panel.dream-panel h3 .count { background: var(--g-bright); color: var(--n950); }
+.panel.dream-panel .empty-shortlist { color: rgba(255, 255, 255, 0.50); }
+.panel h3 {
+  margin: 0 0 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--n600);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel h3 .icon { color: currentColor; display: flex; }
+.panel h3 .count {
+  margin-left: auto;
+  background: var(--n100);
+  color: var(--n800);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.panel h3 .count.brand { background: var(--g-tint); color: var(--g-emerald); }
+
+.memory-content {
+  background: var(--n50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 12px;
+  font-size: 13px;
+  color: var(--n800);
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  margin-bottom: 12px;
+  min-height: 56px;
+  line-height: 1.6;
+}
+.memory-content.empty { color: var(--n500); font-style: italic; }
+
+textarea, input.text-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+  background: white;
+  color: var(--n900);
+  transition: all 0.15s ease;
+}
+textarea { min-height: 70px; }
+textarea:focus, input.text-input:focus {
+  outline: none;
+  border-color: var(--g-emerald);
+  box-shadow: 0 0 0 3px var(--g-glow);
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: -0.005em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+button.primary {
+  background: var(--n950);
+  color: white;
+  border-color: var(--n950);
+}
+button.primary:hover { background: var(--g-emerald); border-color: var(--g-emerald); }
+button.primary:disabled { background: var(--n400); border-color: var(--n400); cursor: wait; }
+button.secondary {
+  background: transparent;
+  color: var(--n800);
+  border-color: var(--border-default);
+}
+button.secondary:hover { background: var(--n50); border-color: var(--g-emerald); color: var(--g-emerald); }
+button.ghost {
+  background: transparent;
+  color: var(--n600);
+  border-color: transparent;
+}
+button.ghost:hover { color: var(--n900); background: var(--n50); }
+
+/* Accept = neon green (locked brand CTA per spec) */
+button.accept {
+  background: var(--g-bright);
+  color: var(--n950);
+  border-color: var(--g-bright-deep);
+  font-weight: 700;
+  padding: 10px 20px;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(73, 242, 100, 0.30);
+}
+button.accept:hover {
+  background: var(--g-bright-deep);
+  border-color: var(--g-emerald);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-green);
+}
+
+/* Slack send */
+button.send-slack {
+  background: white;
+  color: var(--n800);
+  border-color: var(--border-default);
+  font-size: 12px;
+  padding: 7px 12px;
+}
+button.send-slack:hover {
+  background: #4A154B;
+  color: white;
+  border-color: #4A154B;
+}
+button.send-slack svg { width: 13px; height: 13px; }
+
+/* Reject */
+button.reject {
+  background: transparent;
+  color: var(--n600);
+  border-color: var(--border-default);
+  font-weight: 500;
+}
+button.reject:hover {
+  color: var(--error-default);
+  border-color: var(--error-default);
+}
+
+.panel-actions { margin-top: 10px; display: flex; gap: 8px; }
+
+/* ============ CANDIDATE ============ */
+.candidate-area {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 400px;
+}
+.loading-state, .empty-state {
+  background: var(--n0);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--r-lg);
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--n600);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.loading-state .spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--n200);
+  border-top-color: var(--g-emerald);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-state .fun-fact {
+  max-width: 420px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--n700);
+  line-height: 1.6;
+  animation: fadeInFact 0.5s ease;
+}
+.loading-state .fun-fact .fact-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--g-emerald);
+  margin-bottom: 4px;
+}
+@keyframes fadeInFact {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.empty-state .empty-emoji { font-size: 32px; }
+
+.candidate {
+  background: var(--n0);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.candidate:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+}
+.candidate.processing { opacity: 0.55; pointer-events: none; }
+.candidate.accepted {
+  background: var(--g-tint);
+  border-color: var(--g-emerald);
+  transform: translateX(40px) scale(0.96);
+  opacity: 0;
+}
+.candidate.rejected {
+  background: var(--error-tint);
+  border-color: var(--error-default);
+  transform: translateX(-40px) scale(0.96);
+  opacity: 0;
+}
+.candidate.is-dream {
+  background: linear-gradient(135deg, var(--n0) 0%, #F0FDF5 100%);
+  border: 2px solid var(--g-bright);
+  box-shadow: 0 4px 20px rgba(73, 242, 100, 0.22), 0 0 0 1px var(--g-bright);
+}
+.candidate.is-dream::before {
+  content: '🏀 Dream candidate';
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: linear-gradient(135deg, var(--g-bright) 0%, var(--g-bright-deep) 100%);
+  color: var(--n950);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 12px;
+  border-radius: var(--r-full);
+  box-shadow: var(--shadow-green);
+}
+
+.candidate .head { display: flex; gap: 14px; margin-bottom: 12px; align-items: flex-start; }
+.candidate .avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--n100);
+  color: var(--n800);
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+  border: 1px solid var(--border-subtle);
+}
+.candidate .avatar.tint-1 { background: var(--g-tint); color: var(--g-emerald); }
+.candidate .avatar.tint-2 { background: var(--g-tint-deep); color: var(--g-forest); }
+.candidate .avatar.tint-3 { background: var(--gold-tint); color: #92400E; }
+.candidate .avatar.tint-4 { background: var(--info-tint); color: #1D4ED8; }
+.candidate .avatar.tint-5 { background: var(--n950); color: var(--g-bright); }
+
+.candidate .head-info { flex: 1; min-width: 0; }
+.candidate .name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.candidate .name-row h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--n950);
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+.candidate .name-row h2.dream-grab:hover { color: var(--g-emerald); }
+.candidate .loc { font-size: 13px; color: var(--n600); }
+.candidate .heat {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+}
+.candidate .heat.hot { background: var(--g-emerald); color: white; }
+.candidate .heat.warm { background: var(--g-tint); color: var(--g-emerald); }
+.candidate .heat.cool { background: var(--n100); color: var(--n600); }
+
+.candidate .role { font-size: 14px; color: var(--n800); margin-bottom: 12px; }
+.candidate .role .company { color: var(--n950); font-weight: 600; }
+.candidate .role .at { color: var(--n500); margin: 0 4px; }
+
+.candidate .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.candidate .chip {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  font-weight: 500;
+  background: var(--n100);
+  color: var(--n700);
+  border: 1px solid var(--border-subtle);
+}
+.candidate .chip.skill { background: white; color: var(--n800); border-color: var(--border-default); }
+.candidate .chip.stat {
+  background: var(--g-tint);
+  color: var(--g-emerald);
+  border-color: var(--border-green);
+  font-weight: 700;
+}
+.candidate .chip.linkedin {
+  background: #0A66C2;
+  color: white;
+  border-color: #0A66C2;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.candidate .chip.linkedin:hover { background: #084d92; }
+
+.candidate details { margin-bottom: 14px; font-size: 13px; }
+.candidate summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--n700);
+  font-weight: 600;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+.candidate summary:hover { color: var(--g-emerald); }
+.candidate summary::-webkit-details-marker { display: none; }
+.candidate summary::before {
+  content: '▸';
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+.candidate details[open] summary::before { transform: rotate(90deg); }
+.candidate details .profile-expanded {
+  margin-top: 12px;
+  background: var(--n50);
+  padding: 18px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  line-height: 1.55;
+  max-height: 540px;
+  overflow-y: auto;
+  color: var(--n800);
+  border: 1px solid var(--border-subtle);
+}
+.candidate details .profile-expanded::-webkit-scrollbar { width: 6px; }
+.candidate details .profile-expanded::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+
+.profile-summary {
+  font-size: 13px;
+  color: var(--n800);
+  line-height: 1.6;
+  padding: 12px 14px;
+  background: white;
+  border-left: 3px solid var(--g-emerald);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  margin-bottom: 16px;
+}
+
+.profile-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  margin-bottom: 16px;
+}
+.profile-stat {
+  font-size: 12px;
+  color: var(--n600);
+}
+.profile-stat strong {
+  color: var(--n950);
+  font-weight: 700;
+  font-size: 14px;
+  margin-right: 2px;
+}
+.profile-stat + .profile-stat::before {
+  content: '·';
+  color: var(--n300);
+  margin-right: 10px;
+}
+
+.profile-section {
+  margin-bottom: 18px;
+}
+.profile-section:last-child { margin-bottom: 0; }
+.profile-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--n600);
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.experience-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.experience-item {
+  padding: 12px 14px 12px 18px;
+  background: white;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  position: relative;
+}
+.experience-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  background: var(--n200);
+  border-radius: 0 2px 2px 0;
+}
+.experience-item.is-current::before { background: var(--g-bright); box-shadow: 0 0 6px rgba(73, 242, 100, 0.5); }
+.exp-header { margin-bottom: 4px; }
+.exp-role {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--n950);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.exp-role .current-pill {
+  background: var(--g-bright);
+  color: var(--n950);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+}
+.exp-company {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--g-emerald);
+  margin-top: 1px;
+}
+.exp-dates {
+  font-size: 11px;
+  color: var(--n600);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.exp-dates .dur-chip {
+  background: var(--n100);
+  color: var(--n700);
+  padding: 1px 7px;
+  border-radius: var(--r-full);
+  font-weight: 600;
+  font-size: 10px;
+}
+.exp-description {
+  font-size: 12px;
+  color: var(--n600);
+  font-style: italic;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--n50);
+  border-radius: var(--r-sm);
+  line-height: 1.5;
+}
+.exp-duties {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--n800);
+  line-height: 1.55;
+}
+.exp-duties li {
+  padding-left: 16px;
+  position: relative;
+  margin-bottom: 5px;
+}
+.exp-duties li:last-child { margin-bottom: 0; }
+.exp-duties li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--g-emerald);
+}
+.exp-duties-toggle {
+  font-size: 11px;
+  color: var(--g-emerald);
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  letter-spacing: 0.02em;
+}
+.exp-duties-toggle:hover { text-decoration: underline; color: var(--g-forest); }
+
+.profile-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  background: white;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+.profile-list li {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--n800);
+}
+.profile-list li:last-child { border-bottom: none; }
+
+.cert-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.cert-chip {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  background: white;
+  border: 1px solid var(--border-default);
+  color: var(--n700);
+  font-weight: 500;
+}
+.cert-chip.muted { background: var(--n100); color: var(--n500); font-style: italic; }
+
+.tag-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.tag-pill {
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  background: var(--g-tint);
+  color: var(--g-emerald);
+  font-weight: 700;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.candidate .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.candidate .actions .send-slack { margin-left: auto; }
+.candidate .actions .reject { }
+
+.candidate .reason-row {
+  display: none;
+  margin-top: 14px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--error-tint);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(220, 38, 38, 0.20);
+}
+.candidate .reason-row.show { display: flex; }
+.candidate .reason-row .reason-label { font-size: 12px; color: var(--error-strong); font-weight: 600; }
+.candidate .reason-row .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.candidate .reason-row .reject-chip {
+  background: white;
+  border: 1px solid rgba(220, 38, 38, 0.30);
+  color: var(--error-default);
+  padding: 5px 11px;
+  font-size: 11px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  font-weight: 600;
+}
+.candidate .reason-row .reject-chip:hover { background: var(--error-default); color: white; }
+.candidate .reason-row .reason-confirm-row { display: flex; gap: 8px; align-items: center; }
+.candidate .reason-row input.text-input { flex: 1; font-size: 12px; padding: 7px 10px; }
+
+/* Shortlist drawer */
+.shortlist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.shortlist-item {
+  background: rgba(0, 0, 0, 0.20);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.panel:not(.dream-panel) .shortlist-item { background: var(--n50); border: 1px solid var(--border-subtle); }
+.shortlist-item .si-info { flex: 1; min-width: 0; }
+.shortlist-item .si-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.panel:not(.dream-panel) .shortlist-item .si-name { color: var(--n900); }
+.panel.dream-panel .shortlist-item .si-name { color: white; }
+.shortlist-item .si-role {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.panel:not(.dream-panel) .shortlist-item .si-role { color: var(--n600); }
+.panel.dream-panel .shortlist-item .si-role { color: rgba(255, 255, 255, 0.60); }
+.shortlist-item button { padding: 5px 10px; font-size: 11px; }
+
+.empty-shortlist {
+  font-size: 12px;
+  color: var(--n500);
+  font-style: italic;
+  padding: 12px 0;
+  text-align: center;
+}
+
+/* ============ ASHBY TOP BANNER ============ */
+.ashby-strip {
+  position: relative;
+  z-index: 35;
+  background: linear-gradient(90deg, var(--n950) 0%, var(--g-forest) 100%);
+  color: white;
+  border-bottom: 1px solid rgba(73, 242, 100, 0.18);
+  padding: 8px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.ashby-strip .pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--g-bright);
+  box-shadow: 0 0 0 0 rgba(73, 242, 100, 0.6);
+  animation: pulse 1.8s ease-out infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(73, 242, 100, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(73, 242, 100, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(73, 242, 100, 0); }
+}
+.ashby-strip strong {
+  font-weight: 700;
+  color: var(--g-bright);
+  letter-spacing: 0.02em;
+}
+.ashby-strip .soon-tag {
+  background: var(--g-bright);
+  color: var(--n950);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+  margin-left: 4px;
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: var(--n950);
+  color: white;
+  padding: 12px 18px;
+  border-radius: var(--r-full);
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 200;
+  box-shadow: var(--shadow-lg);
+  max-width: 360px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.success { background: var(--g-bright); color: var(--n950); font-weight: 700; }
+#toast.dream { background: linear-gradient(135deg, var(--g-bright) 0%, var(--g-emerald) 100%); color: var(--n950); font-weight: 800; }
+#toast.error { background: var(--error-default); color: white; }
+#toast.slack { background: #4A154B; color: white; }
+#toast .toast-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.muted { color: var(--n600); font-size: 12px; line-height: 1.5; }
+
+@media (max-width: 1200px) {
+  .metric-row { grid-template-columns: repeat(2, 1fr); }
+  .hoop-svg { width: 200px; height: 184px; }
+  .metric-row { margin-top: 220px; }
+}
+@media (max-width: 900px) {
+  main { grid-template-columns: 280px 1fr; }
+  .hoop-svg { width: 170px; height: 156px; }
+  .metric-row { margin-top: 190px; }
+}
+@media (max-width: 700px) {
+  main { grid-template-columns: 1fr; padding: 16px; }
+  aside.sidebar { position: static; max-height: none; }
+  header.topbar { padding: 14px 16px; }
+  header.topbar .header-row { flex-wrap: wrap; }
+  header.topbar .picker-area { width: 100%; margin-left: 0; }
+  header.topbar select#jobPicker { min-width: 100%; width: 100%; }
+  .metric-row { padding: 0 16px; grid-template-columns: 1fr 1fr; margin-top: 24px; }
+  .hoop-container { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="header-row">
+    <div class="brand-mark">
+      <div class="logo-glyph"><svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="21.0017" height="21.0017" rx="4.5946" fill="#49F264"></rect><path fill-rule="evenodd" clip-rule="evenodd" d="M6.6106 16.4693C6.16082 16.4693 5.94205 16.0834 6.03384 15.6792C6.15317 15.1279 6.77582 13.4926 6.30769 12.7576C5.61925 11.6827 3.90657 11.8389 3.52105 11.2876C3.24318 10.8831 3.49081 10.4895 3.87521 10.2586C4.73805 9.7074 6.40866 9.86358 8.03337 8.77947C8.93293 8.19148 9.75905 6.99713 10.2272 6.28051C10.8881 5.2699 11.1726 5.05859 12.5587 5.05859H17.4133C18.1779 5.05859 18.4173 6.35677 17.1697 6.49948C16.8484 6.53623 15.9917 6.66485 14.7709 6.81185C13.6051 6.95885 11.0166 7.3095 12.0355 8.97241C12.7974 9.84521 14.4037 9.73496 14.7709 10.2586C15.0365 10.6211 14.8015 11.0067 14.5123 11.1919C13.6403 11.7432 11.7785 11.6827 10.1538 12.7576C9.05226 13.4926 8.15652 15.1279 7.78936 15.6792C7.52316 16.0834 7.06956 16.4693 6.61978 16.4693H6.6106Z" fill="black"></path></svg></div>
+      <div class="brand-text">
+        <span class="title">Canvue</span>
+        <span class="sub">Fanvue Talent · powered by Pin</span>
+      </div>
+    </div>
+    <div class="picker-area">
+      <span class="picker-label">Role</span>
+      <select id="jobPicker"><option>Loading…</option></select>
+      <button class="new-role-btn" onclick="openNewRoleModal()" title="Create a new role">+ New Role</button>
+    </div>
+  </div>
+</header>
+
+<!-- Settings Modal -->
+
+<div class="ashby-strip">
+  <span class="pulse"></span>
+  <span><strong>Ashby Candidates</strong> · sync your ATS pipeline into the same flow</span>
+  <span class="soon-tag">Coming Soon</span>
+</div>
+
+<div class="modal-backdrop" id="newRoleModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Create New Role <span class="badge">Pin Sourcing</span></h2>
+      <button class="ghost" onclick="closeNewRoleModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <section>
+        <label>Scrape from URL (optional)</label>
+        <div class="row">
+          <input type="text" id="jdUrl" class="text-input" placeholder="https://jobs.ashbyhq.com/fanvue/…" />
+          <button class="secondary" onclick="scrapeJd()" id="scrapeBtn">Scrape JD</button>
+        </div>
+        <div class="scrape-helper">Paste an Ashby, Greenhouse, Lever or careers-page URL to auto-fill the form.</div>
+      </section>
+      <div class="modal-divider"><span>or enter manually</span></div>
+      <section>
+        <label>Job Title *</label>
+        <input type="text" id="newTitle" class="text-input" placeholder="e.g. Staff Software Engineer" />
+      </section>
+      <section class="two-col">
+        <div>
+          <label>Company Name *</label>
+          <input type="text" id="newCompany" class="text-input" value="Fanvue" />
+        </div>
+        <div>
+          <label>Company Website *</label>
+          <input type="text" id="newWebsite" class="text-input" value="fanvue.com" />
+        </div>
+      </section>
+      <section>
+        <label>Job Description</label>
+        <textarea id="newDesc" placeholder="Paste the full JD here — responsibilities, requirements, must-haves, nice-to-haves. Pin uses this to seed the search."></textarea>
+        <div class="scrape-helper">Optional but recommended — the richer the JD, the sharper the first batch.</div>
+      </section>
+    </div>
+    <div class="modal-foot">
+      <span class="required-note">* required fields</span>
+      <button class="ghost" onclick="closeNewRoleModal()">Cancel</button>
+      <button class="accept" onclick="submitNewRole()" id="createRoleBtn">Create Role &amp; Start Sourcing</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="picksModal">
+  <div class="modal picks-modal">
+    <div class="modal-head">
+      <h2>Accepted Candidates <span class="badge"><span id="picksTotalCount">0</span> for this role</span></h2>
+      <button class="ghost" onclick="closePicksModal()">✕</button>
+    </div>
+    <div class="modal-body" id="picksBody">
+      <div class="picks-empty">No accepted candidates yet for this role.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="ghost" onclick="clearAllPicks()">Clear This Role</button>
+      <button class="primary" onclick="closePicksModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="dreamModal">
+  <div class="modal picks-modal">
+    <div class="modal-head">
+      <h2>🏀 Dream Pipeline <span class="badge"><span id="dreamTotalCount">0</span> for this role</span></h2>
+      <button class="ghost" onclick="closeDreamModal()">✕</button>
+    </div>
+    <div class="modal-body" id="dreamBody">
+      <div class="picks-empty">No dreams yet. Throw a candidate through the hoop to add them here.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="primary" onclick="closeDreamModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="hoop-container" id="hoopContainer">
+  <div class="hoop-label">🏀 Throw a Dream</div>
+  <svg class="hoop-svg" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+    <!-- Pole top -->
+    <line x1="120" y1="0" x2="120" y2="12" stroke="#0A0A0A" stroke-width="4"/>
+    <!-- Backboard shadow -->
+    <rect x="34" y="16" width="172" height="92" rx="10" fill="#0A0A0A" opacity="0.10" transform="translate(2 3)"/>
+    <!-- Backboard -->
+    <rect x="34" y="14" width="172" height="92" rx="10" fill="#0A0A0A" stroke="#0A0A0A" stroke-width="3"/>
+    <!-- Fanvue Logo Lockup: symbol + wordmark on backboard -->
+    <g transform="translate(46 28) scale(2.28)">
+      <rect width="21.0017" height="21.0017" rx="4.5946" fill="#49F264"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M6.6106 16.4693C6.16082 16.4693 5.94205 16.0834 6.03384 15.6792C6.15317 15.1279 6.77582 13.4926 6.30769 12.7576C5.61925 11.6827 3.90657 11.8389 3.52105 11.2876C3.24318 10.8831 3.49081 10.4895 3.87521 10.2586C4.73805 9.7074 6.40866 9.86358 8.03337 8.77947C8.93293 8.19148 9.75905 6.99713 10.2272 6.28051C10.8881 5.2699 11.1726 5.05859 12.5587 5.05859H17.4133C18.1779 5.05859 18.4173 6.35677 17.1697 6.49948C16.8484 6.53623 15.9917 6.66485 14.7709 6.81185C13.6051 6.95885 11.0166 7.3095 12.0355 8.97241C12.7974 9.84521 14.4037 9.73496 14.7709 10.2586C15.0365 10.6211 14.8015 11.0067 14.5123 11.1919C13.6403 11.7432 11.7785 11.6827 10.1538 12.7576C9.05226 13.4926 8.15652 15.1279 7.78936 15.6792C7.52316 16.0834 7.06956 16.4693 6.61978 16.4693H6.6106Z" fill="black"/>
+    </g>
+    <g transform="translate(102 42) scale(1.05)">
+      <path d="M0 17.4013V0H10.9672V2.4859H2.94896V7.36022H10.3092V9.82175H2.94896V17.4013H0Z" fill="#FFFFFF"/>
+      <path d="M12.0898 8.64988C12.4066 6.65141 14.0882 4.43359 17.3784 4.43359C21.5459 4.43359 22.6914 6.94387 22.6914 9.64911V14.4991C22.6914 15.4496 22.7401 16.6681 22.8864 17.3993H20.0105C19.9618 16.9118 19.9374 16.4244 19.9374 15.9126V15.3277H19.913C19.4987 16.3513 18.4264 17.7161 15.9161 17.7161C13.0646 17.7161 11.4805 15.9614 11.4805 13.9629C11.4805 10.4777 15.7455 10.1853 17.5734 9.89283C19.1819 9.64911 19.913 9.33228 19.913 8.25993C19.913 7.2607 18.9625 6.62704 17.4271 6.62704C16.0623 6.62704 15.0631 7.40693 14.7706 8.64988H12.0898ZM14.2832 13.8654C14.2832 14.8646 15.1362 15.5958 16.6229 15.5958C18.3045 15.5958 19.9618 14.5478 19.9618 11.5501V10.234C19.6937 10.9408 19.0357 11.5501 16.891 11.9644C15.1606 12.2812 14.2832 12.8174 14.2832 13.8654Z" fill="#FFFFFF"/>
+      <path d="M24.9785 17.4023V4.80214H27.7569V7.01995C28.4149 5.58203 29.5847 4.46094 31.5345 4.46094C34.8003 4.46094 36.0676 6.63001 36.0676 9.53023V17.4023H33.2649V10.1151C33.2649 8.16542 32.6068 6.8981 30.8521 6.8981C29.0973 6.8981 27.8056 8.40913 27.8056 11.5531V17.4023H24.9785Z" fill="#FFFFFF"/>
+      <path d="M39.9342 4.80078C41.0065 8.11532 42.0545 11.2836 43.1025 14.5738H43.1269C44.053 11.5517 45.1985 8.13969 46.2464 4.80078H49.2441C47.6844 9.01707 46.1733 13.1846 44.6379 17.4009H41.5183L36.9121 4.80078H39.9342Z" fill="#FFFFFF"/>
+      <path d="M50.5488 12.6728V4.80078H53.3516V12.0879C53.3516 14.0376 53.9852 15.3049 55.7644 15.3049C57.4947 15.3049 58.8108 13.7939 58.8108 10.65V4.80078H61.6379V17.4009H58.8595V15.1831C58.1771 16.621 57.0317 17.7421 55.0819 17.7421C51.7918 17.7421 50.5488 15.573 50.5488 12.6728Z" fill="#FFFFFF"/>
+      <path d="M75.7326 13.6734C75.0014 16.2324 72.8324 17.7435 69.8347 17.7435C66.0571 17.7435 63.498 15.0382 63.498 11.0656C63.498 7.2393 66.1789 4.46094 69.8347 4.46094C74.1484 4.46094 75.9032 7.77547 75.9276 11.3581C75.9276 11.48 75.9276 11.6749 75.9032 11.8943H66.2033C66.4226 14.1121 67.8362 15.4769 69.8347 15.4769C71.2726 15.4769 72.4912 14.9164 72.9299 13.6734H75.7326ZM66.2277 9.8958H73.1492C72.9786 8.0923 71.9306 6.65438 69.8347 6.65438C67.8362 6.65438 66.4958 7.94608 66.2277 9.8958Z" fill="#FFFFFF"/>
+    </g>
+    <!-- Rim shadow under -->
+    <ellipse cx="120" cy="114" rx="56" ry="11" fill="#0A0A0A" opacity="0.25"/>
+    <!-- Rim -->
+    <ellipse id="hoopRim" cx="120" cy="112" rx="56" ry="11" fill="none" stroke="#E85A1A" stroke-width="6"/>
+    <!-- Net -->
+    <g class="hoop-net" stroke="#FFFFFF" stroke-width="1.8" fill="none">
+      <line x1="68" y1="116" x2="78" y2="190"/>
+      <line x1="82" y1="119" x2="90" y2="192"/>
+      <line x1="96" y1="121" x2="102" y2="194"/>
+      <line x1="110" y1="122" x2="113" y2="196"/>
+      <line x1="120" y1="123" x2="120" y2="196"/>
+      <line x1="130" y1="122" x2="127" y2="196"/>
+      <line x1="144" y1="121" x2="138" y2="194"/>
+      <line x1="158" y1="119" x2="150" y2="192"/>
+      <line x1="172" y1="116" x2="162" y2="190"/>
+      <path d="M 68 116 Q 120 150 172 116" />
+      <path d="M 78 144 Q 120 168 162 144" />
+      <path d="M 86 168 Q 120 184 154 168" />
+      <path d="M 92 188 Q 120 196 148 188"/>
+    </g>
+  </svg>
+</div>
+
+<div class="metric-row">
+  <div class="metric">
+    <div class="label">In Queue</div>
+    <div class="value" id="statRemaining">–</div>
+  </div>
+  <div class="metric">
+    <div class="label">Showing</div>
+    <div class="value" id="statShown">0<span class="small">/ batch</span></div>
+  </div>
+  <div class="metric dream clickable" onclick="openDreamModal()" title="View dream candidates">
+    <div class="label">🏀 Dream</div>
+    <div class="value" id="statDream">0</div>
+  </div>
+  <div class="metric accepted clickable" onclick="openPicksModal()" title="View accepted candidates for this role">
+    <div class="label">Accepted</div>
+    <div class="value" id="statAccepted">0</div>
+  </div>
+</div>
+
+<main>
+  <aside class="sidebar">
+    <div class="panel dream-panel">
+      <h3>
+        <span class="icon">🏀</span>
+        Dream Pipeline
+        <span class="count" id="dreamCount">0</span>
+      </h3>
+      <div id="dreamArea">
+        <div class="empty-shortlist">Click a name and throw it into the hoop.<br/>Top right →</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>
+        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Recruiter Notes
+      </h3>
+      <div class="muted" style="margin-bottom:8px;">Context for Pin to remember about this role. Doesn't change the search.</div>
+      <div id="memoryView" class="memory-content empty">No notes yet.</div>
+      <textarea id="memoryInput" placeholder="e.g. £110–130k band, prefer product startups, must use Cursor/Claude Code daily…"></textarea>
+      <div class="panel-actions">
+        <button class="primary" onclick="saveMemory()">Save Note</button>
+      </div>
+    </div>
+
+    <div class="panel" style="border-left:3px solid var(--g-bright);">
+      <h3>
+        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        New Search
+      </h3>
+      <div class="muted" style="margin-bottom:8px;">Completely replace the current search. Describe who you want from scratch.</div>
+      <textarea id="newSearchInput" rows="3" placeholder="e.g. 'Growth engineers in London, 2-4 years experience, hands-on with A/B testing, TypeScript, startup background'"></textarea>
+      <div class="panel-actions">
+        <button class="primary" onclick="newSearch()">Start New Search</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>
+        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Refine Search
+      </h3>
+      <div class="muted" style="margin-bottom:8px;">Tweak the current search. Adds to existing criteria, doesn't replace.</div>
+      <textarea id="refineInput" placeholder="e.g. 'also include Manchester', 'exclude consultancies', 'more senior'"></textarea>
+      <div class="panel-actions">
+        <button class="primary" onclick="modifySearch()">Apply Tweak</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>
+        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 4"/></svg>
+        Recalibrate
+      </h3>
+      <div class="muted" style="margin-bottom: 12px;">Re-train Pin from your accept/reject patterns. Best after 5+ decisions.</div>
+      <button class="secondary" onclick="recalibrate()" style="width: 100%;">Recalibrate Search</button>
+    </div>
+
+    <div class="panel">
+      <button class="secondary" onclick="loadCandidates(true)" style="width: 100%;">Refresh Batch</button>
+    </div>
+  </aside>
+
+  <section class="candidate-area" id="candidateArea">
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <div>Loading roles…</div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"><div class="toast-icon">i</div><span class="toast-msg">Ready</span></div>
+
+<script>
+/* ── Auto-detect MCP prefixes from artifact metadata ── */
+const _meta = JSON.parse(document.getElementById('cowork-artifact-meta').textContent);
+let PIN = '', SLACK = '';
+_meta.mcpTools.forEach((tool, i) => {
+  const server = _meta.mcpServerNames[i];
+  const last = tool.lastIndexOf('__');
+  const prefix = tool.substring(0, last);
+  if (server === 'Pin' && !PIN) PIN = prefix;
+  if (server === 'Slack' && !SLACK) SLACK = prefix;
+});
+
+/* ── Slack recruiter ID — hardcoded to Tom (TA). All candidate messages always go to Tom. ── */
+const TA_SLACK_ID = 'U096U6705DZ'; // Tom McDonnell — not configurable
+const SETTINGS_KEY = 'canvueSettings';
+let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+function getSlackUserId() { return TA_SLACK_ID; }
+function saveSettings(s) { settings = { ...settings, ...s }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+
+let jobs = [];
+let currentJobId = null;
+let candidates = [];
+let isLoading = false;
+
+const TALENT_FACTS = [
+  /* ── Fanvue ── */
+  "Fanvue raised $22M in its Series A (Jan 2026), hitting a $100M+ run rate with 450% year-over-year revenue growth.",
+  "17 million+ monthly active users and 250,000+ creators call Fanvue home.",
+  "20,000 new creators joined Fanvue in January 2026 alone. The platform is growing fast.",
+  "Fanvue has raised $30.1M total across all funding rounds. Series A led the charge at $22M.",
+  "Fanvue's mission: empower creators to build sustainable businesses through AI-powered monetisation tools.",
+  "Fanvue is headquartered in London with a fully remote-first team spanning multiple countries.",
+  "You can do more at Fanvue in a month than you would do anywhere else in a year. We compete on slope, equity upside, and growth speed.",
+  "Sunday Times Best Places to Work, two years running.",
+  /* ── Creator Economy — Market ── */
+  "The global creator economy is projected at $310B+ in 2026, growing at 23.3% CAGR to $1.35 trillion by 2033.",
+  "Over 200 million people worldwide identify as content creators. Around 2 million earn six-figure incomes annually.",
+  "The influencer marketing industry hit $32.55B in 2026 with 33% compound annual growth. It's only accelerating.",
+  "Video streaming leads the creator economy with 52% of total revenue. Short-form video is the fastest-growing format.",
+  "North America holds 33% of the creator economy market. Asia Pacific is the fastest-growing region at 20%+ CAGR.",
+  "50 million creators worldwide are now professional or semi-professional. The creator middle class is real and growing.",
+  /* ── Creator Economy — Monetisation ── */
+  "Creators running 3+ revenue streams earned $75K more on average than single-source creators in 2025. Diversification pays.",
+  "Fan monetisation is shifting from transactional (tips, one-off buys) to relational, subscription-based models in 2026.",
+  "Substack hit 5 million paid subscriptions in early 2025 — 67% growth year-over-year. Creators want owned distribution.",
+  "Brand deals and ad revenue make up nearly half of all creator earnings, but subscriptions are closing the gap fast.",
+  "Top 1% of content creators generate seven or eight-figure annual revenue. The top 0.1% on OnlyFans average $146K/month.",
+  "The median OnlyFans creator earns $131/month. Managed creators commonly earn $1K-$10K+. Management changes everything.",
+  "OnlyFans now has 4.6 million creators — growth exceeding 1,200% since 2019. The platform isn't slowing down.",
+  /* ── Creator Economy — AI & Tools ── */
+  "86% of global creators actively use generative AI tools. Scripting, thumbnails, editing, and ideation are all being automated.",
+  "AI tools are reshaping creator workflows: what used to take a team of 5 now takes one creator and the right stack.",
+  "TikTok creators earn $0.40-$1.00 per 1,000 views under the Creator Rewards Program. Not much — monetisation has to come from elsewhere.",
+  "Instagram creators average $81,700/year, YouTube creators $62,400, OnlyFans creators $60,700. Platform choice matters.",
+  "TikTok is the platform 30% of creators say pays the most. YouTube comes second at 25.8%. The fight for creator wallets is real.",
+  /* ── Creator Economy — Trends ── */
+  "Creator-run commerce and subscriptions are capturing an ever-larger share of revenue vs ad-only models. Direct-to-fan is the future.",
+  "The creator economy is professionalising: talent managers, agencies, and SaaS tools are turning hobbies into businesses.",
+  "Short-form video exploded, but long-form is fighting back. Podcasts and deep-dive content are growing faster than expected.",
+  "Community is the new content. Creators who build engaged communities monetise 3-5x better than those chasing follower counts.",
+  "Cross-platform syndication is now standard: one piece of content, repurposed across 4-5 platforms. Efficiency is king.",
+  /* ── World Cup 2026 ── */
+  "⚽ World Cup 2026: USA opened with a 4-1 win over Paraguay. 48 teams, 3 host nations, biggest World Cup ever.",
+  "⚽ World Cup 2026: Germany thrashed Curacao 7-1. Seven. One. Absolute demolition job.",
+  "⚽ World Cup 2026: Argentina cruised past Algeria 3-0. La Albiceleste looking sharp early.",
+  "⚽ World Cup 2026: Mexico beat South Africa 2-0 in the opening match. The home crowd went wild.",
+  "⚽ World Cup 2026: Netherlands and Japan drew 2-2 in a thriller. Amad Diallo's goal won it 1-0 for Ivory Coast vs Ecuador.",
+  "⚽ World Cup 2026: France beat Senegal 3-1. Norway hammered Iraq 4-1. Group stages heating up.",
+  "⚽ World Cup 2026: Spain held to a shock 0-0 draw by Cabo Verde. Belgium and Egypt played out 1-1.",
+  "⚽ World Cup 2026: Australia beat Turkey 2-0 in Vancouver. Irankunda scored a screamer.",
+  "⚽ World Cup 2026: Sweden put five past Tunisia (5-1). South Korea edged Czechia 2-1.",
+  "⚽ World Cup 2026: England vs Croatia today. Come on England!",
+  "⚽ World Cup 2026: Austria beat Jordan 3-1. The tournament is only a week old and already delivering bangers.",
+  "⚽ World Cup 2026: Saudi Arabia held Uruguay to a 1-1 draw. Iran and New Zealand also drew 2-2. Upsets everywhere.",
+  /* ── AI Tom ── */
+  "Still reading these instead of reviewing candidates? Once I replace Tom, you might be next 😈"
+];
+let factIndex = Math.floor(Math.random() * TALENT_FACTS.length);
+let factTimer = null;
+
+function getNextFact() {
+  factIndex = (factIndex + 1) % TALENT_FACTS.length;
+  return TALENT_FACTS[factIndex];
+}
+
+let pongRAF = null;
+
+function showLoadingWithFacts(message) {
+  clearInterval(factTimer);
+  cancelAnimationFrame(pongRAF);
+  const fact = getNextFact();
+  $('candidateArea').innerHTML = `<div class="loading-state">
+    <div class="spinner"></div>
+    <div>${message}</div>
+    <div class="fun-fact">
+      <div class="fact-label">Thanks for waiting. Did you know...</div>
+      <span class="fact-text">${escapeHtml(fact)}</span>
+    </div>
+    <div id="pongZone" style="margin-top:16px;text-align:center;">
+      <button onclick="startPong()" style="background:none;border:1px dashed var(--n300);border-radius:var(--r-full);padding:8px 20px;color:var(--n500);cursor:pointer;font-size:0.85rem;transition:all 0.2s;">🏓 Pick up the bat</button>
+    </div>
+  </div>`;
+  factTimer = setInterval(() => {
+    const el = $('candidateArea')?.querySelector('.fact-text');
+    if (el) {
+      const parent = el.closest('.fun-fact');
+      parent.style.animation = 'none';
+      void parent.offsetHeight;
+      parent.style.animation = 'fadeInFact 0.5s ease';
+      el.textContent = getNextFact();
+    }
+  }, 10000);
+}
+
+function startPong() {
+  const zone = document.getElementById('pongZone');
+  if (!zone) return;
+  const W = 280, H = 200;
+  zone.innerHTML = `<canvas id="pongCanvas" width="${W}" height="${H}" style="border-radius:var(--r-sm);background:var(--g-forest);cursor:none;display:block;margin:0 auto;"></canvas>
+    <div id="pongScore" style="color:var(--n400);font-size:0.8rem;margin-top:6px;">Rally: 0</div>`;
+  const cvs = document.getElementById('pongCanvas');
+  const ctx = cvs.getContext('2d');
+  const PAD_W = 60, PAD_H = 8, BALL_R = 6;
+  let padX = W / 2 - PAD_W / 2;
+  let bx = W / 2, by = H / 2, bdx = 2.5, bdy = -3;
+  let rally = 0, alive = true;
+
+  function movePad(clientX) {
+    const rect = cvs.getBoundingClientRect();
+    padX = Math.max(0, Math.min(W - PAD_W, (clientX - rect.left) * (W / rect.width) - PAD_W / 2));
+  }
+  cvs.addEventListener('mousemove', e => movePad(e.clientX));
+  cvs.addEventListener('touchmove', e => { e.preventDefault(); movePad(e.touches[0].clientX); }, { passive: false });
+  cvs.addEventListener('touchstart', e => { e.preventDefault(); movePad(e.touches[0].clientX); }, { passive: false });
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    /* net */
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+    ctx.setLineDash([]);
+    /* paddle */
+    ctx.fillStyle = '#49F264';
+    ctx.beginPath();
+    ctx.roundRect(padX, H - 18, PAD_W, PAD_H, 4);
+    ctx.fill();
+    /* ball */
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(bx, by, BALL_R, 0, Math.PI * 2); ctx.fill();
+    /* rally text */
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.font = 'bold 48px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(rally, W / 2, H / 2 + 16);
+  }
+
+  function tick() {
+    if (!alive || !document.getElementById('pongCanvas')) return;
+    bx += bdx; by += bdy;
+    /* wall bounce */
+    if (bx <= BALL_R || bx >= W - BALL_R) bdx = -bdx;
+    if (by <= BALL_R) bdy = -bdy;
+    /* paddle hit */
+    if (by >= H - 18 - BALL_R && by < H - 10 && bx >= padX - 4 && bx <= padX + PAD_W + 4 && bdy > 0) {
+      bdy = -bdy;
+      /* angle based on where ball hits paddle */
+      const hit = (bx - padX) / PAD_W - 0.5;
+      bdx = hit * 6;
+      /* speed up slightly */
+      const spd = Math.sqrt(bdx * bdx + bdy * bdy);
+      const newSpd = Math.min(spd + 0.15, 7);
+      const ratio = newSpd / spd;
+      bdx *= ratio; bdy *= ratio;
+      rally++;
+      const sc = document.getElementById('pongScore');
+      if (sc) sc.textContent = 'Rally: ' + rally;
+    }
+    /* miss */
+    if (by > H + BALL_R) {
+      alive = false;
+      const sc = document.getElementById('pongScore');
+      if (sc) sc.innerHTML = `Rally: ${rally} &nbsp;·&nbsp; <span onclick="startPong()" style="color:var(--g-bright);cursor:pointer;text-decoration:underline;">Pick up again</span>`;
+      draw();
+      return;
+    }
+    draw();
+    pongRAF = requestAnimationFrame(tick);
+  }
+  draw();
+  pongRAF = requestAnimationFrame(tick);
+}
+
+function stopFacts() { clearInterval(factTimer); cancelAnimationFrame(pongRAF); }
+
+const SESSION_KEY = 'fanvueSourcingSession';
+const DREAM_KEY = 'fanvueDream';
+const PICKS_KEY = 'fanvuePicks';
+
+const session = JSON.parse(localStorage.getItem(SESSION_KEY) || '{"accepted":0}');
+const dreams = JSON.parse(localStorage.getItem(DREAM_KEY) || '{}');
+let picks = JSON.parse(localStorage.getItem(PICKS_KEY) || '[]');
+const $ = (id) => document.getElementById(id);
+
+function persistSession() { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); updateAcceptedStat(); }
+function updateAcceptedStat() {
+  const roleCount = currentJobId ? picks.filter(p => p.jobId === currentJobId).length : 0;
+  $('statAccepted').textContent = roleCount;
+}
+function persistDreams() { localStorage.setItem(DREAM_KEY, JSON.stringify(dreams)); renderDreams(); }
+function persistPicks() { localStorage.setItem(PICKS_KEY, JSON.stringify(picks)); updateAcceptedStat(); }
+function addPick(c, source) {
+  const jobTitle = (jobs.find(j => j.id === currentJobId) || {}).title || 'Unknown';
+  picks = picks.filter(p => p.candidateJobId !== c.candidateJobId);
+  picks.unshift({
+    candidateJobId: c.candidateJobId,
+    name: c.name,
+    role: c.role,
+    company: c.company,
+    loc: c.loc,
+    linkedin: c.linkedin,
+    skills: c.skills,
+    jobId: currentJobId,
+    jobTitle: jobTitle,
+    source: source || 'accept',
+    acceptedAt: new Date().toISOString()
+  });
+  persistPicks();
+}
+function getDreams() { return dreams[currentJobId] || []; }
+function setDreams(arr) { dreams[currentJobId] = arr; persistDreams(); }
+function isDream(cid) { return getDreams().some(x => x.candidateJobId === cid); }
+
+function toast(msg, kind) {
+  const t = $('toast');
+  t.className = kind || '';
+  t.querySelector('.toast-msg').textContent = msg;
+  const ic = { error: '!', success: '✓', dream: '🏀', slack: 'S' }[kind] || 'i';
+  t.querySelector('.toast-icon').textContent = ic;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function parseRes(res) {
+  if (res.isError) {
+    const errMsg = res.content?.[0]?.text || 'Tool call failed';
+    throw new Error(errMsg);
+  }
+  if (res.structuredContent) return res.structuredContent;
+  const txt = res.content?.[0]?.text || '';
+  try { return JSON.parse(txt); } catch (e) { return { _raw: txt }; }
+}
+
+async function callMcp(server, tool, args) {
+  return await window.cowork.callMcpTool(`${server}__${tool}`, args || {});
+}
+const callPin = (tool, args) => callMcp(PIN, tool, args);
+const callSlack = (tool, args) => callMcp(SLACK, tool, args);
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function initials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+function tintClass(name) {
+  if (!name) return 'tint-5';
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return 'tint-' + (Math.abs(h) % 5 + 1);
+}
+
+const SKILL_PATTERNS = [
+  ['TypeScript', /\btypescript\b/i],['React', /\breact(?:\.js)?\b/i],['Node.js', /\bnode(?:\.?js)?\b/i],
+  ['Python', /\bpython\b/i],['AWS', /\baws\b/i],['GCP', /\bgoogle cloud|gcp\b/i],['Azure', /\bazure\b/i],
+  ['Kubernetes', /\bkubernetes|k8s\b/i],['Docker', /\bdocker\b/i],['PostgreSQL', /\bpostgres(?:ql)?\b/i],
+  ['GraphQL', /\bgraphql\b/i],['Next.js', /\bnext\.?js\b/i],['Go', /\bgolang\b/i],['Rust', /\brust\b/i]
+];
+
+function extractSkills(profile) {
+  const found = [];
+  for (const [name, re] of SKILL_PATTERNS) {
+    if (re.test(profile)) found.push(name);
+    if (found.length >= 6) break;
+  }
+  return found;
+}
+
+function countSignal(profile, term) {
+  const re = new RegExp(term, 'gi');
+  const m = profile.match(re);
+  return m ? m.length : 0;
+}
+
+function parseCandidate(c) {
+  const p = c.profile || '';
+  const nameM = p.match(/^## (.+?)'s Resume/m);
+  const lines = p.split('\n');
+  const loc = (lines[1] || '').trim();
+  const liM = p.match(/LinkedIn:\s*(https?:\/\/[^\s]+)/);
+  const jobM = p.match(/####\s+(.+?)\s+at\s+(.+?)\n/);
+  const yearsM = p.match(/([\d.]+)\s+years?\s+total\s+workforce/);
+  const tenureM = p.match(/([\d.]+)\s+years?\s+average\s+tenure/);
+  const skills = extractSkills(p);
+  return {
+    name: nameM ? nameM[1] : 'Unknown',
+    loc: loc,
+    linkedin: liM ? liM[1] : null,
+    role: jobM ? jobM[1] : '',
+    company: jobM ? jobM[2] : '',
+    years: yearsM ? yearsM[1] : null,
+    tenure: tenureM ? tenureM[1] : null,
+    skills: skills,
+    signal: countSignal(p, 'typescript') + Math.floor(skills.length / 2),
+    profile: p,
+    candidateJobId: c.candidateJobId
+  };
+}
+
+function heatLabel(c) {
+  if (c.signal >= 6) return { cls: 'hot', label: '★ Strong fit' };
+  if (c.signal >= 3) return { cls: 'warm', label: 'Warm' };
+  return { cls: 'cool', label: 'Cool' };
+}
+
+function parseFullProfile(profile) {
+  const result = { summary: '', jobs: [], education: [], certifications: [], tags: [] };
+  if (!profile) return result;
+  const lines = profile.split('\n');
+  let i = 0;
+  // Skip until past LinkedIn line
+  while (i < lines.length && !lines[i].startsWith('LinkedIn:')) i++;
+  if (i < lines.length) i++;
+  // Collect free-form summary until "- N years" stat line or ### section
+  const summaryLines = [];
+  while (i < lines.length) {
+    const t = lines[i].trim();
+    if (t.startsWith('### ')) break;
+    if (t.match(/^-\s*[\d.]+\s+years?/)) break;
+    if (t) summaryLines.push(t);
+    i++;
+  }
+  result.summary = summaryLines.join(' ').trim();
+  // Walk to first ###
+  while (i < lines.length && !lines[i].startsWith('### ')) i++;
+  while (i < lines.length) {
+    if (!lines[i].startsWith('### ')) { i++; continue; }
+    const section = lines[i].substring(4).trim().toLowerCase();
+    i++;
+    if (section.includes('experience')) {
+      while (i < lines.length && !lines[i].startsWith('### ')) {
+        if (!lines[i].startsWith('#### ')) { i++; continue; }
+        const titleLine = lines[i].substring(5).trim();
+        i++;
+        const atIdx = titleLine.lastIndexOf(' at ');
+        const title = atIdx > 0 ? titleLine.substring(0, atIdx).trim() : titleLine;
+        const company = atIdx > 0 ? titleLine.substring(atIdx + 4).trim() : '';
+        let dates = '', duration = '';
+        while (i < lines.length && !lines[i].trim()) i++;
+        if (i < lines.length && !lines[i].startsWith('#') && !lines[i].trim().startsWith('**')) {
+          const raw = lines[i].trim().replace(/\[[^\]]+\]/g, '').replace(/\s+/g, ' ').trim();
+          const durM = raw.match(/\(([^)]+)\)\s*$/);
+          if (durM) { duration = durM[1]; dates = raw.replace(/\s*\([^)]+\)\s*$/, '').trim(); }
+          else dates = raw;
+          i++;
+        }
+        let duties = [], companyDescription = '', mode = null;
+        while (i < lines.length && !lines[i].startsWith('#### ') && !lines[i].startsWith('### ')) {
+          const t = lines[i].trim();
+          if (t.startsWith('**') && t.endsWith('**')) {
+            const h = t.replace(/\*\*/g, '').toLowerCase();
+            if (h.includes('duties')) mode = 'duties';
+            else if (h.includes('description')) mode = 'desc';
+            else mode = null;
+            i++; continue;
+          }
+          if (!t) { i++; continue; }
+          if (mode === 'duties' && (t.startsWith('*') || t.startsWith('-'))) {
+            duties.push(t.replace(/^[*-]\s*/, ''));
+          } else if (mode === 'desc') {
+            companyDescription += (companyDescription ? ' ' : '') + t;
+          }
+          i++;
+        }
+        result.jobs.push({ title, company, dates, duration, duties, companyDescription });
+      }
+    } else if (section.includes('education')) {
+      while (i < lines.length && !lines[i].startsWith('### ')) {
+        const t = lines[i].trim();
+        if (t.startsWith('- ') || t.startsWith('* ')) result.education.push(t.replace(/^[*-]\s*/, ''));
+        i++;
+      }
+    } else if (section.includes('certification')) {
+      while (i < lines.length && !lines[i].startsWith('### ')) {
+        const t = lines[i].trim();
+        if (t && !t.startsWith('#')) result.certifications.push(t.replace(/^[*-]\s*/, ''));
+        i++;
+      }
+    } else if (section.includes('tag')) {
+      while (i < lines.length && !lines[i].startsWith('### ')) {
+        const t = lines[i].trim();
+        if (t.startsWith('- ') || t.startsWith('* ')) {
+          const content = t.replace(/^[*-]\s*/, '');
+          const m = content.match(/^([^:]+):\s*(.+)$/);
+          if (m) {
+            const key = m[1].trim(), val = m[2].trim();
+            result.tags.push(key === val ? key.replace(/_/g, ' ') : val.replace(/_/g, ' '));
+          } else result.tags.push(content.replace(/_/g, ' '));
+        }
+        i++;
+      }
+    } else {
+      while (i < lines.length && !lines[i].startsWith('### ')) i++;
+    }
+  }
+  return result;
+}
+
+function renderProfileHTML(c) {
+  const p = parseFullProfile(c.profile);
+  let html = '<div class="profile-expanded">';
+  if (p.summary) html += `<div class="profile-summary">${escapeHtml(p.summary)}</div>`;
+  const stats = [];
+  if (c.years) stats.push(`<span class="profile-stat"><strong>${escapeHtml(c.years)}</strong>yrs experience</span>`);
+  if (c.tenure) stats.push(`<span class="profile-stat"><strong>${escapeHtml(c.tenure)}</strong>yrs avg tenure</span>`);
+  if (p.jobs.length) stats.push(`<span class="profile-stat"><strong>${p.jobs.length}</strong>roles</span>`);
+  if (stats.length) html += `<div class="profile-stats">${stats.join('')}</div>`;
+  if (p.jobs.length) {
+    html += '<div class="profile-section"><h4 class="profile-section-title">Experience</h4><div class="experience-timeline">';
+    p.jobs.forEach((j, idx) => {
+      const isCurrent = idx === 0 && j.dates && /present/i.test(j.dates);
+      const preview = j.duties.slice(0, 4);
+      const rest = j.duties.slice(4);
+      const dutiesId = 'd' + Math.random().toString(36).slice(2, 9);
+      html += `<div class="experience-item ${isCurrent ? 'is-current' : ''}">
+        <div class="exp-header">
+          <div class="exp-role">${escapeHtml(j.title)}${isCurrent ? '<span class="current-pill">Now</span>' : ''}</div>
+          ${j.company ? `<div class="exp-company">${escapeHtml(j.company)}</div>` : ''}
+        </div>
+        ${j.dates ? `<div class="exp-dates"><span>${escapeHtml(j.dates)}</span>${j.duration ? `<span class="dur-chip">${escapeHtml(j.duration)}</span>` : ''}</div>` : ''}
+        ${j.companyDescription ? `<div class="exp-description">${escapeHtml(j.companyDescription)}</div>` : ''}
+        ${preview.length ? `<ul class="exp-duties">${preview.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : ''}
+        ${rest.length ? `<ul class="exp-duties exp-duties-rest" id="${dutiesId}" style="display:none">${rest.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul><button class="exp-duties-toggle" data-target="${dutiesId}">+ ${rest.length} more</button>` : ''}
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+  if (p.education.length) {
+    html += `<div class="profile-section"><h4 class="profile-section-title">Education</h4><ul class="profile-list">${p.education.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul></div>`;
+  }
+  if (p.certifications.length) {
+    const preview = p.certifications.slice(0, 14);
+    const rest = p.certifications.length - preview.length;
+    html += `<div class="profile-section"><h4 class="profile-section-title">Certifications</h4><div class="cert-grid">${preview.map(cv => `<span class="cert-chip">${escapeHtml(cv)}</span>`).join('')}${rest > 0 ? `<span class="cert-chip muted">+ ${rest} more</span>` : ''}</div></div>`;
+  }
+  if (p.tags.length) {
+    html += `<div class="profile-section"><h4 class="profile-section-title">Tags</h4><div class="tag-pills">${p.tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('')}</div></div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+async function init() {
+  persistSession();
+  renderDreams();
+  try {
+    const res = await callPin('list_jobs', {});
+    const data = parseRes(res);
+    jobs = Array.isArray(data) ? data : (data.jobs || []);
+    const picker = $('jobPicker');
+    picker.innerHTML = '';
+    if (jobs.length === 0) {
+      picker.innerHTML = '<option>No active roles</option>';
+      $('candidateArea').innerHTML = '<div class="empty-state"><div class="empty-emoji">🌱</div><div>No active sourcing campaigns found.</div></div>';
+      return;
+    }
+    jobs.forEach(j => {
+      const opt = document.createElement('option');
+      opt.value = j.id;
+      opt.textContent = j.title + (j.department ? ` · ${j.department}` : '');
+      picker.appendChild(opt);
+    });
+    picker.addEventListener('change', () => selectJob(picker.value));
+    const saved = localStorage.getItem('sourcingLastJob');
+    const initial = (saved && jobs.find(j => j.id === saved)) ? saved : jobs[0].id;
+    picker.value = initial;
+    await selectJob(initial);
+  } catch (e) {
+    toast('Failed to load roles: ' + e.message, 'error');
+    $('candidateArea').innerHTML = `<div class="empty-state"><div class="empty-emoji">⚠️</div><div>Error: ${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+async function selectJob(jobId) {
+  currentJobId = jobId;
+  localStorage.setItem('sourcingLastJob', jobId);
+  renderDreams();
+  updateAcceptedStat();
+  await Promise.all([loadMemory(), loadCandidates()]);
+}
+
+async function loadMemory() {
+  try {
+    const res = await callPin('read_job_memory', { job_id: currentJobId });
+    const data = parseRes(res);
+    const mv = $('memoryView');
+    if (data.memory && data.memory.trim()) {
+      mv.classList.remove('empty');
+      mv.textContent = data.memory;
+    } else {
+      mv.classList.add('empty');
+      mv.textContent = 'No notes yet. Save context so Pin learns what good looks like.';
+    }
+  } catch (e) { $('memoryView').textContent = 'Could not load notes'; }
+}
+
+let loadGeneration = 0;
+
+async function loadCandidates(showToastFlag) {
+  const gen = ++loadGeneration;
+  isLoading = true;
+  showLoadingWithFacts('Loading candidates…');
+  if (showToastFlag) toast('Refreshing…', 'success');
+  let emptyRetries = 0;
+  const MAX_EMPTY_RETRIES = 4;
+  try {
+    let attempts = 0;
+    while (attempts < 8) {
+      if (gen !== loadGeneration) { stopFacts(); return; }
+      const res = await callPin('get_candidates', { job_id: currentJobId, take: 10 });
+      if (gen !== loadGeneration) { stopFacts(); return; }
+      if (res.isError) throw new Error(res.content?.[0]?.text || 'Failed');
+      const data = parseRes(res);
+      /* Pin says "still finding" — keep polling */
+      if (data._raw && /still (finding|running)|please wait/i.test(data._raw) && !data.candidates) {
+        showLoadingWithFacts('Pin is finding candidates…');
+        emptyRetries = 0;
+        await new Promise(r => setTimeout(r, 2000));
+        attempts++;
+        continue;
+      }
+      /* Pin says "no candidates waiting" — might still be sourcing after modify/recalibrate */
+      if (data._raw && /no candidates/i.test(data._raw) && !data.candidates && emptyRetries < MAX_EMPTY_RETRIES) {
+        emptyRetries++;
+        showLoadingWithFacts(`Pin is sourcing new candidates… (attempt ${emptyRetries}/${MAX_EMPTY_RETRIES})`);
+        await new Promise(r => setTimeout(r, 3000));
+        attempts++;
+        continue;
+      }
+      stopFacts();
+      candidates = (data.candidates || []).map(parseCandidate);
+      $('statRemaining').textContent = data.remainingCandidateCount ?? '–';
+      $('statShown').innerHTML = candidates.length + '<span class="small">/ batch</span>';
+      renderCandidates();
+      return;
+    }
+    if (gen === loadGeneration) {
+      showLoadingWithFacts('Pin is still working, retrying…');
+      await new Promise(r => setTimeout(r, 3000));
+      if (gen === loadGeneration) {
+        isLoading = false;
+        return loadCandidates();
+      }
+    }
+  } catch (e) {
+    stopFacts();
+    if (gen === loadGeneration) {
+      $('candidateArea').innerHTML = `<div class="empty-state"><div class="empty-emoji">⚠️</div><div>Error<br/><span class="muted">${escapeHtml(e.message)}</span></div></div>`;
+      toast('Error: ' + e.message, 'error');
+    }
+  } finally { if (gen === loadGeneration) isLoading = false; }
+}
+
+function renderCandidates() {
+  const area = $('candidateArea');
+  if (candidates.length === 0) {
+    area.innerHTML = `<div class="empty-state"><div class="empty-emoji">🎯</div><div>Batch cleared.</div><button onclick="loadCandidates(true)" style="margin-top:12px;background:var(--g-mid);color:white;border:none;padding:10px 24px;border-radius:var(--r-full);cursor:pointer;font-weight:600;font-size:0.95rem;">↻ Pull More Candidates</button></div>`;
+    return;
+  }
+  area.innerHTML = '';
+  candidates.forEach(c => area.appendChild(makeCard(c)));
+}
+
+function renderDreams() {
+  const list = getDreams();
+  $('statDream').textContent = list.length;
+  $('dreamCount').textContent = list.length;
+  const area = $('dreamArea');
+  if (list.length === 0) {
+    area.innerHTML = '<div class="empty-shortlist">Click a name and throw it into the hoop.<br/>Top right →</div>';
+    return;
+  }
+  area.innerHTML = '<div class="shortlist-items">' + list.map(c => `
+    <div class="shortlist-item">
+      <div class="si-info">
+        <div class="si-name">${escapeHtml(c.name)}</div>
+        <div class="si-role">${escapeHtml(c.role)}${c.company ? ' @ ' + escapeHtml(c.company) : ''}</div>
+      </div>
+      <button class="send-slack" data-act="slack-dream" data-cid="${escapeHtml(c.candidateJobId)}">Slack</button>
+      <button class="ghost" data-act="remove-dream" data-cid="${escapeHtml(c.candidateJobId)}" style="color:rgba(255,255,255,0.6)">✕</button>
+    </div>
+  `).join('') + '</div>';
+  area.querySelectorAll('button').forEach(btn => btn.addEventListener('click', (e) => {
+    const cid = e.target.dataset.cid;
+    const act = e.target.dataset.act;
+    if (act === 'remove-dream') removeFromDreams(cid);
+    if (act === 'slack-dream') sendDreamToSlack(cid);
+  }));
+}
+
+const REJECT_REASONS = [
+  ['WRONG_LOCATION', 'Wrong location'],['LACKING_EXPERIENCE', 'Too junior'],['TOO_MUCH_EXPERIENCE', 'Too senior'],
+  ['MISSING_SKILLS', 'Missing skills'],['MISMATCHED_INDUSTRY', 'Wrong industry'],['MISMATCHED_ROLE', 'Wrong role shape'],
+  ['MISMATCHED_COMPANY_SIZE', 'Company size'],['UNAFFORDABLE', 'Outside band']
+];
+
+function makeCard(c) {
+  const card = document.createElement('div');
+  let cls = 'candidate';
+  if (isDream(c.candidateJobId)) cls += ' is-dream';
+  card.className = cls;
+  card.dataset.cid = c.candidateJobId;
+  const heat = heatLabel(c);
+  const reasonChips = REJECT_REASONS.map(([val, label]) => `<span class="reject-chip" data-reason="${val}">${escapeHtml(label)}</span>`).join('');
+  const skillChips = c.skills.map(s => `<span class="chip skill">${escapeHtml(s)}</span>`).join('');
+  const statChips = [
+    c.years ? `<span class="chip stat">${escapeHtml(c.years)} yrs exp</span>` : '',
+    c.tenure ? `<span class="chip">~${escapeHtml(c.tenure)} yrs avg tenure</span>` : ''
+  ].filter(Boolean).join('');
+  card.innerHTML = `
+    <div class="head">
+      <div class="avatar ${tintClass(c.name)}">${initials(c.name)}</div>
+      <div class="head-info">
+        <div class="name-row">
+          <h2 class="dream-grab" data-cid="${escapeHtml(c.candidateJobId)}" title="Click + drag to throw into the hoop">${escapeHtml(c.name)}</h2>
+          ${c.loc ? `<span class="loc">${escapeHtml(c.loc)}</span>` : ''}
+          <span class="heat ${heat.cls}">${heat.label}</span>
+        </div>
+        <div class="role">
+          ${c.role ? `<span class="company">${escapeHtml(c.role)}</span>` : ''}
+          ${c.company ? `<span class="at">at</span><span class="company">${escapeHtml(c.company)}</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="chip-row">
+      ${statChips}
+      ${skillChips}
+      ${c.linkedin ? `<a class="chip linkedin" href="${escapeHtml(c.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>` : ''}
+    </div>
+    <details>
+      <summary>View full profile</summary>
+      ${renderProfileHTML(c)}
+    </details>
+    <div class="actions">
+      <button class="accept" data-act="accept">Accept</button>
+      <button class="reject" data-act="reject">Reject</button>
+      <button class="send-slack" data-act="slack" title="Send to my Slack">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.5a2 2 0 1 1-2-2h2v2zm1 0a2 2 0 0 1 4 0v5a2 2 0 0 1-4 0v-5zm2-9.5a2 2 0 1 1 2-2v2h-2zm0 1a2 2 0 0 1 0 4H7a2 2 0 1 1 0-4h5zm9.5 2a2 2 0 1 1 2 2h-2v-2zm-1 0a2 2 0 0 1-4 0v-5a2 2 0 0 1 4 0v5zm-2 9.5a2 2 0 1 1-2 2v-2h2zm0-1a2 2 0 0 1 0-4h5a2 2 0 1 1 0 4h-5z"/></svg>
+        Send to Slack
+      </button>
+    </div>
+    <div class="reason-row">
+      <div class="reason-label">Why? (helps Pin learn)</div>
+      <div class="reason-chips">${reasonChips}</div>
+      <div class="reason-confirm-row">
+        <input type="text" class="text-input custom-reason" placeholder="Or write a custom reason…"/>
+        <button class="secondary" data-act="confirm-reject">Reject</button>
+        <button class="ghost" data-act="cancel-reject">Cancel</button>
+      </div>
+    </div>
+  `;
+  card.addEventListener('click', (e) => {
+    const t = e.target;
+    const act = t.dataset.act;
+    if (act === 'accept') return acceptCard(card, c);
+    if (act === 'reject') return card.querySelector('.reason-row').classList.add('show');
+    if (act === 'cancel-reject') return card.querySelector('.reason-row').classList.remove('show');
+    if (act === 'confirm-reject') return rejectCard(card, c, null);
+    if (act === 'slack') return sendCandidateToSlack(c);
+    if (t.classList.contains('reject-chip')) return rejectCard(card, c, t.dataset.reason);
+    if (t.classList.contains('exp-duties-toggle')) {
+      const target = document.getElementById(t.dataset.target);
+      if (target) {
+        const expanded = target.style.display !== 'none';
+        target.style.display = expanded ? 'none' : '';
+        t.textContent = expanded ? `+ ${target.children.length} more` : 'Show less';
+      }
+      return;
+    }
+  });
+  // Dream grab handler
+  card.querySelector('.dream-grab').addEventListener('mousedown', (e) => startDreamThrow(e, c));
+  return card;
+}
+
+/* ============ DREAM THROW MECHANIC ============ */
+let dragState = null;
+
+function startDreamThrow(e, candidate) {
+  e.preventDefault();
+  const ball = document.createElement('div');
+  ball.className = 'basketball';
+  ball.textContent = candidate.name;
+  document.body.appendChild(ball);
+  ball.style.left = e.clientX + 'px';
+  ball.style.top = e.clientY + 'px';
+  dragState = {
+    ball,
+    candidate,
+    history: [{ x: e.clientX, y: e.clientY, t: performance.now() }]
+  };
+  document.addEventListener('mousemove', onDreamMove);
+  document.addEventListener('mouseup', onDreamRelease);
+}
+
+function onDreamMove(e) {
+  if (!dragState) return;
+  dragState.ball.style.left = e.clientX + 'px';
+  dragState.ball.style.top = e.clientY + 'px';
+  dragState.history.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+  if (dragState.history.length > 6) dragState.history.shift();
+}
+
+function onDreamRelease(e) {
+  document.removeEventListener('mousemove', onDreamMove);
+  document.removeEventListener('mouseup', onDreamRelease);
+  if (!dragState) return;
+  const h = dragState.history;
+  if (h.length < 2) {
+    dragState.ball.remove();
+    dragState = null;
+    return;
+  }
+  const last = h[h.length - 1];
+  const earlier = h[Math.max(0, h.length - 4)];
+  const dt = Math.max(8, last.t - earlier.t);
+  let vx = (last.x - earlier.x) / dt * 16;
+  let vy = (last.y - earlier.y) / dt * 16;
+  // Boost low-velocity throws so they still reach
+  const speed = Math.hypot(vx, vy);
+  if (speed < 4) { vx *= 4 / Math.max(speed, 0.5); vy *= 4 / Math.max(speed, 0.5); }
+  animateBall(dragState.ball, last.x, last.y, vx, vy, dragState.candidate);
+  dragState = null;
+}
+
+function animateBall(ball, startX, startY, vx, vy, candidate) {
+  const gravity = 0.55;
+  let x = startX, y = startY;
+  const hoopRim = document.getElementById('hoopRim');
+  const rimRect = hoopRim.getBoundingClientRect();
+  const rimY = rimRect.top + rimRect.height / 2;
+  const rimXMin = rimRect.left + 6;
+  const rimXMax = rimRect.right - 6;
+  let prevY = y;
+  let scored = false;
+  function tick() {
+    prevY = y;
+    x += vx;
+    y += vy;
+    vy += gravity;
+    ball.style.left = x + 'px';
+    ball.style.top = y + 'px';
+    // Score check: crossed rim line going downward, within x bounds
+    if (!scored && prevY < rimY && y >= rimY && x >= rimXMin && x <= rimXMax && vy > 0) {
+      scored = true;
+      onScore(candidate, x, y);
+      ball.remove();
+      return;
+    }
+    // Off screen
+    if (y > window.innerHeight + 100 || x < -200 || x > window.innerWidth + 200) {
+      ball.remove();
+      if (!scored) toast(`Missed — ${candidate.name} not added.`);
+      return;
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+async function onScore(candidate, x, y) {
+  const hoop = $('hoopContainer');
+  hoop.classList.add('score-flash', 'score-active');
+  setTimeout(() => hoop.classList.remove('score-flash', 'score-active'), 800);
+  // Score burst
+  const burst = document.createElement('div');
+  burst.className = 'score-burst';
+  burst.textContent = 'SCORE!';
+  burst.style.left = x + 'px';
+  burst.style.top = (y - 40) + 'px';
+  document.body.appendChild(burst);
+  setTimeout(() => burst.remove(), 1200);
+  // Confetti
+  const colours = ['#49F264', '#0E6E3A', '#E85A1A', '#F59E0B', '#0A0A0A'];
+  for (let i = 0; i < 18; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = (x + (Math.random() - 0.5) * 100) + 'px';
+    c.style.top = y + 'px';
+    c.style.background = colours[i % colours.length];
+    c.style.animationDelay = (Math.random() * 0.15) + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 1800);
+  }
+  // Add to dreams (persistent record)
+  const list = getDreams();
+  if (!list.find(x => x.candidateJobId === candidate.candidateJobId)) {
+    list.push({
+      candidateJobId: candidate.candidateJobId,
+      name: candidate.name,
+      role: candidate.role,
+      company: candidate.company,
+      loc: candidate.loc,
+      linkedin: candidate.linkedin,
+      skills: candidate.skills
+    });
+    setDreams(list);
+  }
+  toast(`🏀 SCORE! ${candidate.name} — accepting + Slacking…`, 'dream');
+
+  // Fire Accept (Pin outreach) + Slack draft in parallel
+  const card = document.querySelector(`.candidate[data-cid="${candidate.candidateJobId}"]`);
+  if (card) card.classList.add('is-dream', 'processing');
+
+  const jobTitle = (jobs.find(j => j.id === currentJobId) || {}).title || '';
+  const slackMsg = buildSlackMessage(candidate, jobTitle);
+
+  const tasks = [
+    callPin('accept_candidate', { job_id: currentJobId, candidate_job_id: candidate.candidateJobId })
+      .then(parseRes)
+      .then(() => { session.accepted++; persistSession(); addPick(candidate, 'dream'); return 'accepted'; })
+      .catch(e => { console.error('Accept failed', e); toast('Accept failed: ' + e.message, 'error'); return 'accept-failed'; }),
+    callSlack('slack_send_message_draft', { channel_id: getSlackUserId(), message: slackMsg })
+      .then(parseRes)
+      .then(() => 'slacked')
+      .catch(async (e) => {
+        if (String(e.message).includes('draft_already_exists')) {
+          try {
+            await parseRes(await callSlack('slack_send_message', { channel_id: getSlackUserId(), message: slackMsg }));
+            return 'slacked-direct';
+          } catch (e2) { console.error('Slack failed', e2); return 'slack-failed'; }
+        }
+        console.error('Slack draft failed', e);
+        return 'slack-failed';
+      })
+  ];
+  const [acceptResult, slackResult] = await Promise.all(tasks);
+
+  // Remove card from candidate list
+  if (card) {
+    card.classList.add('accepted');
+    setTimeout(() => {
+      card.remove();
+      candidates = candidates.filter(x => x.candidateJobId !== candidate.candidateJobId);
+      $('statShown').innerHTML = candidates.length + '<span class="small">/ batch</span>';
+      if (candidates.length === 0) loadCandidates();
+    }, 500);
+  }
+
+  let summary = `🏀 ${candidate.name} dreamed`;
+  if (acceptResult === 'accepted') summary += ' · accepted';
+  if (slackResult === 'slacked' || slackResult === 'slacked-direct') summary += ' · Slacked';
+  toast(summary, 'dream');
+}
+
+/* ============ ACTIONS ============ */
+async function acceptCard(card, c) {
+  card.classList.add('processing');
+  try {
+    const res = await callPin('accept_candidate', { job_id: currentJobId, candidate_job_id: c.candidateJobId });
+    parseRes(res);
+    card.classList.add('accepted');
+    session.accepted++;
+    persistSession();
+    addPick(c, 'accept');
+    setDreams(getDreams().filter(x => x.candidateJobId !== c.candidateJobId));
+    toast(`Accepted ${c.name}`, 'success');
+    setTimeout(() => {
+      card.remove();
+      candidates = candidates.filter(x => x.candidateJobId !== c.candidateJobId);
+      $('statShown').innerHTML = candidates.length + '<span class="small">/ batch</span>';
+      if (candidates.length === 0) loadCandidates();
+    }, 500);
+  } catch (e) {
+    card.classList.remove('processing');
+    toast('Accept failed: ' + e.message, 'error');
+  }
+}
+
+async function rejectCard(card, c, reason) {
+  card.classList.add('processing');
+  const customReason = card.querySelector('.custom-reason').value.trim();
+  try {
+    const args = { job_id: currentJobId, candidate_job_id: c.candidateJobId };
+    if (customReason) args.custom_rejection_reason = customReason;
+    else if (reason) args.rejection_reason = reason;
+    const res = await callPin('reject_candidate', args);
+    parseRes(res);
+    card.classList.add('rejected');
+    setDreams(getDreams().filter(x => x.candidateJobId !== c.candidateJobId));
+    toast(`Rejected ${c.name}`);
+    setTimeout(() => {
+      card.remove();
+      candidates = candidates.filter(x => x.candidateJobId !== c.candidateJobId);
+      $('statShown').innerHTML = candidates.length + '<span class="small">/ batch</span>';
+      if (candidates.length === 0) loadCandidates();
+    }, 500);
+  } catch (e) {
+    card.classList.remove('processing');
+    toast('Reject failed: ' + e.message, 'error');
+  }
+}
+
+function removeFromDreams(cid) {
+  const list = getDreams().filter(x => x.candidateJobId !== cid);
+  setDreams(list);
+  const card = document.querySelector(`.candidate[data-cid="${cid}"]`);
+  if (card) card.classList.remove('is-dream');
+  toast('Removed from dream pipeline');
+}
+
+/* ============ SLACK ============ */
+function buildSlackMessage(c, jobTitle) {
+  const lines = [];
+  lines.push(`*🏀 Reach out: ${c.name}*`);
+  lines.push(`_for ${jobTitle || 'open role'}_`);
+  lines.push('');
+  if (c.role || c.company) lines.push(`*Current:* ${c.role}${c.company ? ' @ ' + c.company : ''}`);
+  if (c.loc) lines.push(`*Location:* ${c.loc}`);
+  if (c.skills && c.skills.length) lines.push(`*Stack:* ${c.skills.join(', ')}`);
+  if (c.linkedin) lines.push(`*LinkedIn:* ${c.linkedin}`);
+  lines.push('');
+  lines.push('_Drafted from Canvue — review and reach out._');
+  return lines.join('\n');
+}
+
+async function sendCandidateToSlack(c) {
+  if (!requireSlackId()) return;
+  const jobTitle = (jobs.find(j => j.id === currentJobId) || {}).title || '';
+  const msg = buildSlackMessage(c, jobTitle);
+  toast(`Sending ${c.name} to Slack…`, 'slack');
+  try {
+    const res = await callSlack('slack_send_message_draft', { channel_id: getSlackUserId(), message: msg });
+    parseRes(res);
+    toast(`Slack draft created for ${c.name} — check Drafts in Slack`, 'slack');
+  } catch (e) {
+    // If draft already exists, send directly instead
+    if (String(e.message).includes('draft_already_exists')) {
+      try {
+        const res2 = await callSlack('slack_send_message', { channel_id: getSlackUserId(), message: msg });
+        parseRes(res2);
+        toast(`Sent ${c.name} to your Slack`, 'slack');
+        return;
+      } catch (e2) { toast('Slack failed: ' + e2.message, 'error'); return; }
+    }
+    toast('Slack failed: ' + e.message, 'error');
+  }
+}
+
+async function sendDreamToSlack(cid) {
+  const item = getDreams().find(x => x.candidateJobId === cid);
+  if (!item) return;
+  await sendCandidateToSlack(item);
+}
+
+async function saveMemory() {
+  const text = $('memoryInput').value.trim();
+  if (!text) { toast('Nothing to save', 'error'); return; }
+  try {
+    const res = await callPin('update_job_memory', { job_id: currentJobId, memory: text });
+    parseRes(res);
+    $('memoryInput').value = '';
+    toast('Note saved — refreshing candidates…', 'success');
+    loadMemory();
+    await loadCandidates(true);
+  } catch (e) { toast('Save failed: ' + e.message, 'error'); }
+}
+
+async function modifySearch() {
+  const text = $('refineInput').value.trim();
+  if (!text) { toast('Nothing to apply', 'error'); return; }
+  try {
+    toast('Applying…');
+    showLoadingWithFacts('Applying refinement…');
+    const res = await callPin('modify_search', { job_id: currentJobId, instructions: text });
+    parseRes(res);
+    $('refineInput').value = '';
+    toast('Applied — Pin is reprocessing…', 'success');
+    showLoadingWithFacts('Pin is reprocessing your search…');
+    await new Promise(r => setTimeout(r, 5000));
+    await loadCandidates(true);
+  } catch (e) {
+    stopFacts();
+    const isTimeout = /not responding|timed? ?out|ETIMEDOUT/i.test(e.message);
+    const msg = isTimeout
+      ? 'Pin connector timed out. This happens sometimes with complex searches.'
+      : 'Refine failed: ' + e.message;
+    toast(msg, 'error');
+    $('candidateArea').innerHTML = `<div class="loading-state">
+      <div style="font-size:2rem;margin-bottom:12px;">⏳</div>
+      <div style="font-weight:600;margin-bottom:8px;">${isTimeout ? 'Pin timed out' : 'Refine failed'}</div>
+      <div style="color:var(--n500);margin-bottom:16px;max-width:340px;text-align:center;">${escapeHtml(msg)}</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="modifySearch()" class="action-btn" style="background:var(--g-mid);color:white;border:none;padding:8px 20px;border-radius:var(--r-full);cursor:pointer;font-weight:600;">↻ Retry Refine</button>
+        <button onclick="loadCandidates(true)" class="action-btn" style="background:var(--n100);color:var(--n800);border:1px solid var(--border-default);padding:8px 20px;border-radius:var(--r-full);cursor:pointer;font-weight:600;">Load Current</button>
+      </div>
+    </div>`;
+  }
+}
+
+async function newSearch() {
+  const text = $('newSearchInput').value.trim();
+  if (!text) { toast('Describe the candidates you want', 'error'); return; }
+  try {
+    toast('Starting new search…');
+    showLoadingWithFacts('Pin is building a completely new search…');
+    const instructions = 'COMPLETELY REPLACE the current search criteria. Ignore all previous refinements. I want to find: ' + text;
+    const res = await callPin('modify_search', { job_id: currentJobId, instructions: instructions });
+    parseRes(res);
+    $('newSearchInput').value = '';
+    toast('New search launched — Pin is sourcing…', 'success');
+    showLoadingWithFacts('Pin is sourcing fresh candidates…');
+    await new Promise(r => setTimeout(r, 5000));
+    await loadCandidates(true);
+  } catch (e) {
+    stopFacts();
+    const isTimeout = /not responding|timed? ?out|ETIMEDOUT/i.test(e.message);
+    const msg = isTimeout
+      ? 'Pin connector timed out. Give it a moment and retry.'
+      : 'New search failed: ' + e.message;
+    toast(msg, 'error');
+    $('candidateArea').innerHTML = `<div class="loading-state">
+      <div style="font-size:2rem;margin-bottom:12px;">⏳</div>
+      <div style="font-weight:600;margin-bottom:8px;">${isTimeout ? 'Pin timed out' : 'New search failed'}</div>
+      <div style="color:var(--n500);margin-bottom:16px;max-width:340px;text-align:center;">${escapeHtml(msg)}</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="newSearch()" class="action-btn" style="background:var(--g-mid);color:white;border:none;padding:8px 20px;border-radius:var(--r-full);cursor:pointer;font-weight:600;">↻ Retry</button>
+        <button onclick="loadCandidates(true)" class="action-btn" style="background:var(--n100);color:var(--n800);border:1px solid var(--border-default);padding:8px 20px;border-radius:var(--r-full);cursor:pointer;font-weight:600;">Load Current</button>
+      </div>
+    </div>`;
+  }
+}
+
+async function recalibrate() {
+  try {
+    toast('Recalibrating…');
+    showLoadingWithFacts('Recalibrating from your accept/reject patterns…');
+    await callPin('recalibrate_search', { job_id: currentJobId });
+    toast('Recalibrated — Pin is reprocessing…', 'success');
+    showLoadingWithFacts('Pin is reprocessing your search…');
+    await new Promise(r => setTimeout(r, 5000));
+    await loadCandidates();
+  } catch (e) {
+    stopFacts();
+    const isTimeout = /not responding|timed? ?out|ETIMEDOUT/i.test(e.message);
+    const msg = isTimeout
+      ? 'Pin connector timed out. Give it a moment and retry.'
+      : 'Recalibrate failed: ' + e.message;
+    toast(msg, 'error');
+    $('candidateArea').innerHTML = `<div class="loading-state">
+      <div style="font-size:2rem;margin-bottom:12px;">⏳</div>
+      <div style="font-weight:600;margin-bottom:8px;">${isTimeout ? 'Pin timed out' : 'Recalibrate failed'}</div>
+      <div style="color:var(--n500);margin-bottom:16px;max-width:340px;text-align:center;">${escapeHtml(msg)}</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="recalibrate()" class="action-btn" style="background:var(--g-mid);color:white;border:none;padding:8px 20px;border-radius:var(--r-full);cursor:pointer;font-weight:600;">↻ Retry</button>
+        <button onclick="loadCandidates(true)" class="action-btn" style="background:var(--n100);color:var(--n800);border:1px solid var(--border-default);padding:8px 20px;border-radius:var(--r-full);cursor:pointer;font-weight:600;">Load Current</button>
+      </div>
+    </div>`;
+  }
+}
+
+/* ============ NEW ROLE / SCRAPE JD ============ */
+/* ============ SETTINGS ============ */
+function requireSlackId() {
+  if (getSlackUserId()) return true;
+  toast('No recruiter Slack ID configured — check Settings (⚙)', 'error');
+  openSettings();
+  return false;
+}
+
+function openNewRoleModal() {
+  $('newTitle').value = '';
+  $('newCompany').value = 'Fanvue';
+  $('newWebsite').value = 'fanvue.com';
+  $('newDesc').value = '';
+  $('jdUrl').value = '';
+  $('newRoleModal').classList.add('show');
+  setTimeout(() => $('jdUrl').focus(), 80);
+}
+
+function closeNewRoleModal() {
+  $('newRoleModal').classList.remove('show');
+}
+
+async function scrapeJd() {
+  const url = $('jdUrl').value.trim();
+  if (!url) { toast('Paste a URL first', 'error'); return; }
+  const btn = $('scrapeBtn');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Scraping…';
+  toast('Scraping job description…');
+  try {
+    const res = await callPin('scrape_job_description', { url });
+    const data = parseRes(res);
+    if (data.title) $('newTitle').value = data.title;
+    if (data.description) $('newDesc').value = data.description;
+    if (data.company_name && !$('newCompany').value) $('newCompany').value = data.company_name;
+    toast('Scraped — review and create', 'success');
+  } catch (e) {
+    toast('Scrape failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+async function submitNewRole() {
+  const title = $('newTitle').value.trim();
+  const company_name = $('newCompany').value.trim();
+  const company_website = $('newWebsite').value.trim();
+  const description = $('newDesc').value.trim();
+  if (!title) { toast('Title is required', 'error'); $('newTitle').focus(); return; }
+  if (!company_name) { toast('Company name is required', 'error'); $('newCompany').focus(); return; }
+  if (!company_website) { toast('Company website is required', 'error'); $('newWebsite').focus(); return; }
+
+  const btn = $('createRoleBtn');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Creating…';
+
+  try {
+    const args = { title, company_name, company_website };
+    if (description) args.description = description;
+    const res = await callPin('create_job', args);
+    parseRes(res);
+    closeNewRoleModal();
+    toast(`Role "${title}" created — sourcing kicked off`, 'success');
+
+    // Refresh jobs list
+    const jobsRes = await callPin('list_jobs', {});
+    const jobsData = parseRes(jobsRes);
+    jobs = Array.isArray(jobsData) ? jobsData : (jobsData.jobs || []);
+    const picker = $('jobPicker');
+    picker.innerHTML = '';
+    jobs.forEach(j => {
+      const opt = document.createElement('option');
+      opt.value = j.id;
+      opt.textContent = j.title + (j.department ? ` · ${j.department}` : '');
+      picker.appendChild(opt);
+    });
+    const newJob = jobs.find(j => j.title === title) || jobs[jobs.length - 1];
+    if (newJob) {
+      picker.value = newJob.id;
+      await selectJob(newJob.id);
+    }
+  } catch (e) {
+    toast('Create failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+// Close modal on backdrop click + Esc key
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'newRoleModal') closeNewRoleModal();
+  if (e.target && e.target.id === 'picksModal') closePicksModal();
+  if (e.target && e.target.id === 'dreamModal') closeDreamModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeNewRoleModal(); closePicksModal(); closeDreamModal(); }
+});
+
+/* ============ PICKS MODAL ============ */
+function openPicksModal() {
+  renderPicksBody();
+  $('picksModal').classList.add('show');
+}
+function closePicksModal() {
+  $('picksModal').classList.remove('show');
+}
+function renderPicksBody() {
+  const rolePicks = picks.filter(p => p.jobId === currentJobId);
+  $('picksTotalCount').textContent = rolePicks.length;
+  const body = $('picksBody');
+  if (rolePicks.length === 0) {
+    body.innerHTML = '<div class="picks-empty">No accepted candidates yet for this role.<br/><span class="muted" style="font-size:11px;">Accept candidates with the green button or throw a Dream to track them here.</span></div>';
+    return;
+  }
+  body.innerHTML = '<div class="picks-group">' + rolePicks.map(p => `
+    <div class="pick-row ${p.source === 'dream' ? 'is-dream' : ''}">
+      <div class="pr-avatar">${initials(p.name)}</div>
+      <div class="pr-info">
+        <div class="pr-name">
+          ${escapeHtml(p.name)}
+          ${p.source === 'dream' ? '<span class="dream-icon">🏀</span>' : ''}
+        </div>
+        <div class="pr-meta">${escapeHtml(p.role || '')}${p.company ? ' @ ' + escapeHtml(p.company) : ''}${p.loc ? ' · ' + escapeHtml(p.loc) : ''}</div>
+      </div>
+      <div class="pr-actions">
+        ${p.linkedin ? `<a href="${escapeHtml(p.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>` : ''}
+        <button class="send-slack" data-act="pick-slack" data-cid="${escapeHtml(p.candidateJobId)}">Slack</button>
+        <button class="ghost" data-act="pick-remove" data-cid="${escapeHtml(p.candidateJobId)}">✕</button>
+      </div>
+    </div>
+  `).join('') + '</div>';
+  body.querySelectorAll('button').forEach(btn => btn.addEventListener('click', (e) => {
+    const cid = e.currentTarget.dataset.cid;
+    const act = e.currentTarget.dataset.act;
+    if (act === 'pick-remove') {
+      picks = picks.filter(p => p.candidateJobId !== cid);
+      persistPicks();
+      renderPicksBody();
+      toast('Removed from picks');
+    }
+    if (act === 'pick-slack') {
+      const p = picks.find(x => x.candidateJobId === cid);
+      if (p) sendCandidateToSlack(p);
+    }
+  }));
+}
+function clearAllPicks() {
+  if (!confirm('Clear accepted candidates for this role? This only clears the local list, not Pin outreach.')) return;
+  picks = picks.filter(p => p.jobId !== currentJobId);
+  persistPicks();
+  renderPicksBody();
+  toast('Cleared for this role');
+}
+
+function openDreamModal() {
+  renderDreamModalBody();
+  $('dreamModal').classList.add('show');
+}
+function closeDreamModal() {
+  $('dreamModal').classList.remove('show');
+}
+function renderDreamModalBody() {
+  const list = getDreams();
+  $('dreamTotalCount').textContent = list.length;
+  const body = $('dreamBody');
+  if (list.length === 0) {
+    body.innerHTML = '<div class="picks-empty">No dreams yet. Throw a candidate through the hoop to add them here.</div>';
+    return;
+  }
+  body.innerHTML = '<div class="picks-group"><div class="picks-group-head"><span class="picks-group-title">Dream Candidates</span><span class="picks-group-count">' + list.length + '</span></div>' + list.map(c => `
+    <div class="pick-row is-dream">
+      <div class="pr-avatar">${initials(c.name)}</div>
+      <div class="pr-info">
+        <div class="pr-name">${escapeHtml(c.name)} <span class="dream-icon">🏀</span></div>
+        <div class="pr-meta">${escapeHtml(c.role || '')}${c.company ? ' @ ' + escapeHtml(c.company) : ''}${c.loc ? ' · ' + escapeHtml(c.loc) : ''}</div>
+      </div>
+      <div class="pr-actions">
+        ${c.linkedin ? `<a href="${escapeHtml(c.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>` : ''}
+        <button class="send-slack" data-act="dream-slack" data-cid="${escapeHtml(c.candidateJobId)}">Slack</button>
+        <button class="ghost" data-act="dream-remove" data-cid="${escapeHtml(c.candidateJobId)}">✕</button>
+      </div>
+    </div>
+  `).join('') + '</div>';
+  body.querySelectorAll('button').forEach(btn => btn.addEventListener('click', (e) => {
+    const cid = e.currentTarget.dataset.cid;
+    const act = e.currentTarget.dataset.act;
+    if (act === 'dream-remove') {
+      removeFromDreams(cid);
+      renderDreamModalBody();
+    }
+    if (act === 'dream-slack') {
+      const d = getDreams().find(x => x.candidateJobId === cid);
+      if (d) sendCandidateToSlack(d);
+    }
+  }));
+}
+
+init();
+</script>
+</body>
+</html>
