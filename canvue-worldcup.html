@@ -109,8 +109,8 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   background:
-    radial-gradient(circle at 0% 0%, rgba(14, 110, 58, 0.04), transparent 40%),
-    radial-gradient(circle at 100% 100%, rgba(73, 242, 100, 0.05), transparent 35%),
+    radial-gradient(circle at 0% 0%, rgba(26, 10, 46, 0.06), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(255, 215, 0, 0.07), transparent 35%),
     var(--n50);
   min-height: 100vh;
   overflow-x: hidden;
@@ -118,13 +118,13 @@ body {
 
 /* ============ HEADER ============ */
 header.topbar {
-  background: linear-gradient(135deg, var(--n950) 0%, var(--n950) 55%, var(--g-forest) 100%);
+  background: linear-gradient(135deg, #1a0a2e 0%, #1a0a2e 40%, #8B1A4A 70%, #C41E3A 100%);
   color: white;
   padding: 18px 32px 20px;
   position: sticky;
   top: 0;
   z-index: 50;
-  border-bottom: 2px solid var(--g-bright);
+  border-bottom: 2px solid #FFD700;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 header.topbar .header-row {
@@ -147,7 +147,7 @@ header.topbar .logo-glyph {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  box-shadow: 0 4px 14px rgba(73, 242, 100, 0.45);
+  box-shadow: 0 4px 14px rgba(255, 215, 0, 0.45);
 }
 header.topbar .logo-glyph svg {
   width: 100%;
@@ -196,21 +196,21 @@ header.topbar select#jobPicker option { background: var(--n950); color: white; }
   font-weight: 700;
   padding: 9px 14px;
   border-radius: var(--r-full);
-  background: var(--g-bright);
+  background: #FFD700;
   color: var(--n950);
-  border: 1px solid var(--g-bright-deep);
+  border: 1px solid #DAA520;
   cursor: pointer;
   letter-spacing: -0.005em;
   transition: all 0.15s ease;
-  box-shadow: 0 4px 12px rgba(73, 242, 100, 0.30);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.30);
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 .new-role-btn:hover {
-  background: var(--g-bright-deep);
+  background: #FFC000;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(73, 242, 100, 0.40);
+  box-shadow: 0 6px 16px rgba(255, 215, 0, 0.40);
 }
 
 .picks-btn {
@@ -493,11 +493,11 @@ header.topbar select#jobPicker option { background: var(--n950); color: white; }
   text-transform: uppercase;
   letter-spacing: 0.10em;
   color: var(--n950);
-  background: var(--g-bright);
+  background: #FFD700;
   padding: 6px 16px;
   border-radius: var(--r-full);
-  border: 2px solid var(--g-bright-deep);
-  box-shadow: 0 4px 14px rgba(73, 242, 100, 0.42);
+  border: 2px solid #DAA520;
+  box-shadow: 0 4px 14px rgba(255, 215, 0, 0.42);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -528,8 +528,8 @@ header.topbar select#jobPicker option { background: var(--n950); color: white; }
   pointer-events: none;
   font-weight: 900;
   font-size: 40px;
-  color: var(--g-bright);
-  text-shadow: 0 4px 14px rgba(73, 242, 100, 0.6), 0 2px 4px rgba(0,0,0,0.3);
+  color: #FFD700;
+  text-shadow: 0 4px 14px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0,0,0,0.3);
   letter-spacing: -0.03em;
   z-index: 100;
   animation: burst 1.2s ease forwards;
@@ -560,13 +560,13 @@ header.topbar select#jobPicker option { background: var(--n950); color: white; }
   position: fixed;
   z-index: 99;
   pointer-events: none;
-  background: linear-gradient(135deg, #E85A1A 0%, #C84410 100%);
+  background: linear-gradient(135deg, #1a0a2e 0%, #8B1A4A 100%);
   color: white;
   font-weight: 700;
   font-size: 13px;
   padding: 8px 14px;
   border-radius: var(--r-full);
-  box-shadow: 0 8px 22px rgba(232, 90, 26, 0.5), inset 0 -2px 0 rgba(0,0,0,0.18);
+  box-shadow: 0 8px 22px rgba(139, 26, 74, 0.5), inset 0 -2px 0 rgba(0,0,0,0.18);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -575,7 +575,7 @@ header.topbar select#jobPicker option { background: var(--n950); color: white; }
   border: 2px solid rgba(255,255,255,0.6);
 }
 .basketball::before {
-  content: '🏀';
+  content: '⚽';
   font-size: 14px;
 }
 
@@ -1341,9 +1341,9 @@ button.reject:hover {
 .ashby-strip {
   position: relative;
   z-index: 35;
-  background: linear-gradient(90deg, var(--n950) 0%, var(--g-forest) 100%);
+  background: linear-gradient(90deg, #1a0a2e 0%, #8B1A4A 100%);
   color: white;
-  border-bottom: 1px solid rgba(73, 242, 100, 0.18);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.18);
   padding: 8px 32px;
   display: flex;
   align-items: center;
@@ -1357,22 +1357,22 @@ button.reject:hover {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--g-bright);
-  box-shadow: 0 0 0 0 rgba(73, 242, 100, 0.6);
+  background: #FFD700;
+  box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.6);
   animation: pulse 1.8s ease-out infinite;
 }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(73, 242, 100, 0.5); }
-  70% { box-shadow: 0 0 0 8px rgba(73, 242, 100, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(73, 242, 100, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(255, 215, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
 }
 .ashby-strip strong {
   font-weight: 700;
-  color: var(--g-bright);
+  color: #FFD700;
   letter-spacing: 0.02em;
 }
 .ashby-strip .soon-tag {
-  background: var(--g-bright);
+  background: #FFD700;
   color: var(--n950);
   font-size: 9px;
   font-weight: 800;
@@ -1453,7 +1453,7 @@ button.reject:hover {
       <div class="logo-glyph"><svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="21.0017" height="21.0017" rx="4.5946" fill="#49F264"></rect><path fill-rule="evenodd" clip-rule="evenodd" d="M6.6106 16.4693C6.16082 16.4693 5.94205 16.0834 6.03384 15.6792C6.15317 15.1279 6.77582 13.4926 6.30769 12.7576C5.61925 11.6827 3.90657 11.8389 3.52105 11.2876C3.24318 10.8831 3.49081 10.4895 3.87521 10.2586C4.73805 9.7074 6.40866 9.86358 8.03337 8.77947C8.93293 8.19148 9.75905 6.99713 10.2272 6.28051C10.8881 5.2699 11.1726 5.05859 12.5587 5.05859H17.4133C18.1779 5.05859 18.4173 6.35677 17.1697 6.49948C16.8484 6.53623 15.9917 6.66485 14.7709 6.81185C13.6051 6.95885 11.0166 7.3095 12.0355 8.97241C12.7974 9.84521 14.4037 9.73496 14.7709 10.2586C15.0365 10.6211 14.8015 11.0067 14.5123 11.1919C13.6403 11.7432 11.7785 11.6827 10.1538 12.7576C9.05226 13.4926 8.15652 15.1279 7.78936 15.6792C7.52316 16.0834 7.06956 16.4693 6.61978 16.4693H6.6106Z" fill="black"></path></svg></div>
       <div class="brand-text">
         <span class="title">Canvue</span>
-        <span class="sub">Fanvue Talent · powered by Pin</span>
+        <span class="sub">World Cup 2026 Edition ⚽</span>
       </div>
     </div>
     <div class="picker-area">
@@ -1539,7 +1539,7 @@ button.reject:hover {
       <button class="ghost" onclick="closeDreamModal()">✕</button>
     </div>
     <div class="modal-body" id="dreamBody">
-      <div class="picks-empty">No dreams yet. Throw a candidate through the hoop to add them here.</div>
+      <div class="picks-empty">No dreams yet. Score a candidate into the goal to add them here.</div>
     </div>
     <div class="modal-foot">
       <button class="primary" onclick="closeDreamModal()">Close</button>
@@ -1548,7 +1548,7 @@ button.reject:hover {
 </div>
 
 <div class="hoop-container" id="hoopContainer">
-  <div class="hoop-label">🏀 Throw a Dream</div>
+  <div class="hoop-label">⚽ Score a Goal</div>
   <svg class="hoop-svg" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
     <!-- Pole top -->
     <line x1="120" y1="0" x2="120" y2="12" stroke="#0A0A0A" stroke-width="4"/>
@@ -1572,7 +1572,7 @@ button.reject:hover {
     <!-- Rim shadow under -->
     <ellipse cx="120" cy="114" rx="56" ry="11" fill="#0A0A0A" opacity="0.25"/>
     <!-- Rim -->
-    <ellipse id="hoopRim" cx="120" cy="112" rx="56" ry="11" fill="none" stroke="#E85A1A" stroke-width="6"/>
+    <ellipse id="hoopRim" cx="120" cy="112" rx="56" ry="11" fill="none" stroke="#FFD700" stroke-width="6"/>
     <!-- Net -->
     <g class="hoop-net" stroke="#FFFFFF" stroke-width="1.8" fill="none">
       <line x1="68" y1="116" x2="78" y2="190"/>
@@ -1620,7 +1620,7 @@ button.reject:hover {
         <span class="count" id="dreamCount">0</span>
       </h3>
       <div id="dreamArea">
-        <div class="empty-shortlist">Click a name and throw it into the hoop.<br/>Top right →</div>
+        <div class="empty-shortlist">Click a name and score it into the goal.<br/>Top right →</div>
       </div>
     </div>
 
@@ -2280,7 +2280,7 @@ function renderDreams() {
   $('dreamCount').textContent = list.length;
   const area = $('dreamArea');
   if (list.length === 0) {
-    area.innerHTML = '<div class="empty-shortlist">Click a name and throw it into the hoop.<br/>Top right →</div>';
+    area.innerHTML = '<div class="empty-shortlist">Click a name and score it into the goal.<br/>Top right →</div>';
     return;
   }
   area.innerHTML = '<div class="shortlist-items">' + list.map(c => `
@@ -2933,7 +2933,7 @@ function renderDreamModalBody() {
   $('dreamTotalCount').textContent = list.length;
   const body = $('dreamBody');
   if (list.length === 0) {
-    body.innerHTML = '<div class="picks-empty">No dreams yet. Throw a candidate through the hoop to add them here.</div>';
+    body.innerHTML = '<div class="picks-empty">No dreams yet. Score a candidate into the goal to add them here.</div>';
     return;
   }
   body.innerHTML = '<div class="picks-group"><div class="picks-group-head"><span class="picks-group-title">Dream Candidates</span><span class="picks-group-count">' + list.length + '</span></div>' + list.map(c => `
